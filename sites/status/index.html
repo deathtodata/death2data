@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status — Death2Data</title>
+    <meta name="description" content="System status and uptime for Death2Data services.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --white: #f5f5f5;
+            --gray: #888;
+            --gray-dark: #555;
+            --gray-darker: #333;
+            --gray-darkest: #222;
+            --red: #ff3333;
+            --green: #00ff66;
+            --yellow: #ffcc00;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: var(--black);
+            color: var(--white);
+            font-family: 'Instrument Sans', sans-serif;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 60px 24px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header */
+        header {
+            margin-bottom: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--red);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo::before {
+            content: '█';
+            animation: blink 1s steps(1) infinite;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        
+        .header-tag {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--gray-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        /* Overall Status Banner */
+        .status-banner {
+            background: linear-gradient(135deg, rgba(0, 255, 102, 0.1) 0%, rgba(0, 255, 102, 0.05) 100%);
+            border: 1px solid rgba(0, 255, 102, 0.3);
+            padding: 24px 32px;
+            margin-bottom: 48px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .status-banner.degraded {
+            background: linear-gradient(135deg, rgba(255, 204, 0, 0.1) 0%, rgba(255, 204, 0, 0.05) 100%);
+            border-color: rgba(255, 204, 0, 0.3);
+        }
+        
+        .status-banner.down {
+            background: linear-gradient(135deg, rgba(255, 51, 51, 0.1) 0%, rgba(255, 51, 51, 0.05) 100%);
+            border-color: rgba(255, 51, 51, 0.3);
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .status-banner.degraded .status-indicator {
+            background: var(--yellow);
+        }
+        
+        .status-banner.down .status-indicator {
+            background: var(--red);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-text {
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+        }
+        
+        .status-text strong {
+            color: var(--green);
+        }
+        
+        .status-banner.degraded .status-text strong {
+            color: var(--yellow);
+        }
+        
+        .status-banner.down .status-text strong {
+            color: var(--red);
+        }
+        
+        /* Services List */
+        .services {
+            margin-bottom: 48px;
+        }
+        
+        .services-header {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--gray-dark);
+            margin-bottom: 16px;
+        }
+        
+        .service {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--gray-darkest);
+        }
+        
+        .service:first-of-type {
+            border-top: 1px solid var(--gray-darkest);
+        }
+        
+        .service-name {
+            font-size: 16px;
+        }
+        
+        .service-status {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .service-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+        }
+        
+        .service-status.degraded::before {
+            background: var(--yellow);
+        }
+        
+        .service-status.down::before {
+            background: var(--red);
+        }
+        
+        .service-status.operational {
+            color: var(--green);
+        }
+        
+        .service-status.degraded {
+            color: var(--yellow);
+        }
+        
+        .service-status.down {
+            color: var(--red);
+        }
+        
+        /* Uptime History */
+        .uptime-section {
+            margin-bottom: 48px;
+        }
+        
+        .uptime-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .uptime-title {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--gray-dark);
+        }
+        
+        .uptime-percentage {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            color: var(--green);
+        }
+        
+        .uptime-bar {
+            display: flex;
+            gap: 2px;
+            height: 32px;
+        }
+        
+        .uptime-day {
+            flex: 1;
+            background: var(--green);
+            border-radius: 2px;
+            transition: opacity 0.2s;
+        }
+        
+        .uptime-day:hover {
+            opacity: 0.8;
+        }
+        
+        .uptime-day.degraded {
+            background: var(--yellow);
+        }
+        
+        .uptime-day.down {
+            background: var(--red);
+        }
+        
+        .uptime-day.no-data {
+            background: var(--gray-darker);
+        }
+        
+        .uptime-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--gray-dark);
+        }
+        
+        /* Incidents */
+        .incidents {
+            margin-bottom: 48px;
+        }
+        
+        .incidents-header {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--gray-dark);
+            margin-bottom: 16px;
+        }
+        
+        .incident {
+            padding: 20px;
+            background: #111;
+            border-left: 3px solid var(--green);
+            margin-bottom: 12px;
+        }
+        
+        .incident.degraded {
+            border-left-color: var(--yellow);
+        }
+        
+        .incident.down {
+            border-left-color: var(--red);
+        }
+        
+        .incident-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .incident-title {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        
+        .incident-date {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--gray-dark);
+        }
+        
+        .incident-description {
+            font-size: 14px;
+            color: var(--gray);
+        }
+        
+        .no-incidents {
+            color: var(--gray);
+            font-style: italic;
+        }
+        
+        /* Footer */
+        footer {
+            padding-top: 40px;
+            border-top: 1px solid var(--gray-darkest);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--gray);
+        }
+        
+        footer a {
+            color: var(--gray);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        footer a:hover {
+            color: var(--white);
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+        
+        /* Mobile */
+        @media (max-width: 600px) {
+            .container {
+                padding: 40px 20px;
+            }
+            
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .status-banner {
+                padding: 20px;
+            }
+            
+            footer {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="https://death2data.com" class="logo">Death2Data</a>
+            <span class="header-tag">System Status</span>
+        </header>
+        
+        <main>
+            <!-- Overall Status -->
+            <div class="status-banner">
+                <div class="status-indicator"></div>
+                <div class="status-text"><strong>All Systems Operational</strong></div>
+            </div>
+            
+            <!-- Services -->
+            <section class="services">
+                <div class="services-header">Services</div>
+                
+                <div class="service">
+                    <span class="service-name">Website (death2data.com)</span>
+                    <span class="service-status operational">Operational</span>
+                </div>
+                
+                <div class="service">
+                    <span class="service-name">Documentation (docs.death2data.com)</span>
+                    <span class="service-status operational">Operational</span>
+                </div>
+                
+                <div class="service">
+                    <span class="service-name">Search App (app.death2data.com)</span>
+                    <span class="service-status operational">Operational</span>
+                </div>
+                
+                <div class="service">
+                    <span class="service-name">API</span>
+                    <span class="service-status operational">Operational</span>
+                </div>
+            </section>
+            
+            <!-- Uptime History -->
+            <section class="uptime-section">
+                <div class="uptime-header">
+                    <span class="uptime-title">90-Day Uptime</span>
+                    <span class="uptime-percentage">100.00%</span>
+                </div>
+                
+                <div class="uptime-bar">
+                    <!-- 90 days represented as bars -->
+                    <div class="uptime-day" title="Jan 22 - Operational"></div>
+                    <div class="uptime-day" title="Jan 21 - Operational"></div>
+                    <div class="uptime-day" title="Jan 20 - Operational"></div>
+                    <div class="uptime-day" title="Jan 19 - Operational"></div>
+                    <div class="uptime-day" title="Jan 18 - Operational"></div>
+                    <div class="uptime-day" title="Jan 17 - Operational"></div>
+                    <div class="uptime-day" title="Jan 16 - Operational"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                    <div class="uptime-day no-data" title="No data"></div>
+                </div>
+                
+                <div class="uptime-labels">
+                    <span>30 days ago</span>
+                    <span>Today</span>
+                </div>
+            </section>
+            
+            <!-- Recent Incidents -->
+            <section class="incidents">
+                <div class="incidents-header">Recent Incidents</div>
+                <p class="no-incidents">No incidents reported in the last 90 days.</p>
+                
+                <!-- Example incident (commented out for now)
+                <div class="incident down">
+                    <div class="incident-header">
+                        <span class="incident-title">API Outage</span>
+                        <span class="incident-date">Jan 15, 2025</span>
+                    </div>
+                    <p class="incident-description">Brief outage affecting search API. Resolved within 15 minutes.</p>
+                </div>
+                -->
+            </section>
+        </main>
+        
+        <footer>
+            <div>Last updated: <span id="last-updated">Just now</span></div>
+            <div class="footer-links">
+                <a href="https://death2data.com">Home</a>
+                <a href="https://docs.death2data.com">Docs</a>
+                <a href="mailto:hello@death2data.com">Contact</a>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        // Update timestamp
+        const now = new Date();
+        document.getElementById('last-updated').textContent = now.toLocaleString();
+    </script>
+</body>
+</html>

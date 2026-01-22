@@ -1,0 +1,30 @@
+{
+  "name": "death2data",
+  "version": "0.1.0",
+  "description": "Privacy-first search. No tracking. No profiling. No bullshit.",
+  "author": "Death2Data <hello@death2data.com>",
+  "license": "MIT",
+  "homepage": "https://death2data.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deathtodata/death2data.git"
+  },
+  "bugs": {
+    "url": "https://github.com/deathtodata/death2data/issues"
+  },
+  "keywords": [
+    "privacy",
+    "search-engine",
+    "metasearch",
+    "self-hosted",
+    "open-source",
+    "no-tracking"
+  ],
+  "scripts": {
+    "start:www": "open sites/www/index.html",
+    "start:docs": "open sites/docs/index.html",
+    "start:app": "open sites/app/index.html",
+    "start:status": "open sites/status/index.html"
+  },
+  "private": false
+}

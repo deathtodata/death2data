@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Death2Data — Reclaim Your Search</title>
+    <meta name="description" content="Privacy-first search engine. No tracking. No profiling. Self-hosted. Open source.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --white: #f5f5f5;
+            --gray: #888;
+            --red: #ff3333;
+            --red-dim: #cc0000;
+            --green: #00ff66;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: var(--black);
+            color: var(--white);
+            font-family: 'Instrument Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Noise texture overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        /* Scan line effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.1) 2px,
+                rgba(0, 0, 0, 0.1) 4px
+            );
+            pointer-events: none;
+            z-index: 999;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 24px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header */
+        header {
+            margin-bottom: 120px;
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        .logo {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--red);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo::before {
+            content: '█';
+            animation: blink 1s steps(1) infinite;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        
+        /* Hero */
+        .hero {
+            margin-bottom: 80px;
+        }
+        
+        h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: clamp(48px, 10vw, 96px);
+            font-weight: 700;
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            margin-bottom: 40px;
+            animation: slideUp 0.8s ease-out 0.2s both;
+        }
+        
+        h1 .strike {
+            position: relative;
+            color: var(--red);
+        }
+        
+        h1 .strike::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 4px;
+            background: var(--red);
+            animation: strikeThrough 0.6s ease-out 1s both;
+        }
+        
+        @keyframes strikeThrough {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+        
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .tagline {
+            font-size: 20px;
+            line-height: 1.6;
+            color: var(--gray);
+            max-width: 540px;
+            animation: slideUp 0.8s ease-out 0.4s both;
+        }
+        
+        .tagline strong {
+            color: var(--white);
+            font-weight: 600;
+        }
+        
+        /* Features grid */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2px;
+            background: #222;
+            margin-bottom: 80px;
+            animation: slideUp 0.8s ease-out 0.6s both;
+        }
+        
+        .feature {
+            background: var(--black);
+            padding: 32px 24px;
+            transition: background 0.2s;
+        }
+        
+        .feature:hover {
+            background: #111;
+        }
+        
+        .feature-icon {
+            font-family: 'Space Mono', monospace;
+            font-size: 24px;
+            color: var(--green);
+            margin-bottom: 16px;
+        }
+        
+        .feature h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+        
+        .feature p {
+            font-size: 14px;
+            color: var(--gray);
+            line-height: 1.5;
+        }
+        
+        /* Signup form */
+        .signup {
+            background: linear-gradient(135deg, #111 0%, #0a0a0a 100%);
+            border: 1px solid #222;
+            padding: 48px;
+            margin-bottom: 80px;
+            animation: slideUp 0.8s ease-out 0.8s both;
+        }
+        
+        .signup h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .signup .signup-description {
+            color: var(--gray);
+            margin-bottom: 32px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        /* Honeypot field - hidden from humans, catches bots */
+        .honey-field {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .signup input[type="email"] {
+            flex: 1;
+            min-width: 250px;
+            padding: 16px 20px;
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            background: var(--black);
+            border: 2px solid #333;
+            color: var(--white);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .signup input[type="email"]:focus {
+            border-color: var(--green);
+        }
+        
+        .signup input[type="email"]::placeholder {
+            color: #555;
+        }
+        
+        .signup button {
+            padding: 16px 32px;
+            font-family: 'Space Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            background: var(--white);
+            color: var(--black);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .signup button:hover {
+            background: var(--green);
+            transform: translateY(-2px);
+        }
+        
+        .signup button:active {
+            transform: translateY(0);
+        }
+        
+        .signup button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .form-note {
+            margin-top: 16px;
+            font-size: 12px;
+            color: #555;
+            font-family: 'Space Mono', monospace;
+        }
+        
+        .form-note a {
+            color: var(--gray);
+        }
+        
+        /* Success state */
+        .signup.success .form-row,
+        .signup.success .signup-description,
+        .signup.success .form-note {
+            display: none;
+        }
+        
+        .success-message {
+            display: none;
+            font-family: 'Space Mono', monospace;
+            color: var(--green);
+            font-size: 18px;
+        }
+        
+        .signup.success .success-message {
+            display: block;
+        }
+        
+        /* Error state */
+        .error-message {
+            display: none;
+            font-family: 'Space Mono', monospace;
+            color: var(--red);
+            font-size: 14px;
+            margin-top: 16px;
+        }
+        
+        .signup.error .error-message {
+            display: block;
+        }
+        
+        /* Manifesto */
+        .manifesto {
+            border-left: 2px solid var(--red);
+            padding-left: 32px;
+            margin-bottom: 80px;
+            animation: slideUp 0.8s ease-out 1s both;
+        }
+        
+        .manifesto p {
+            font-size: 18px;
+            line-height: 1.8;
+            color: var(--gray);
+            margin-bottom: 16px;
+        }
+        
+        .manifesto p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .manifesto strong {
+            color: var(--white);
+        }
+        
+        /* Footer */
+        footer {
+            padding-top: 40px;
+            border-top: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            color: var(--gray);
+            animation: fadeIn 0.8s ease-out 1.2s both;
+        }
+        
+        footer a {
+            color: var(--gray);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        footer a:hover {
+            color: var(--white);
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 24px;
+        }
+        
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            .container {
+                padding: 40px 20px;
+            }
+            
+            header {
+                margin-bottom: 80px;
+            }
+            
+            .signup {
+                padding: 32px 24px;
+            }
+            
+            .manifesto {
+                padding-left: 20px;
+            }
+            
+            footer {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">Death2Data</div>
+        </header>
+        
+        <section class="hero">
+            <h1>Kill the<br><span class="strike">Trackers</span></h1>
+            <p class="tagline">
+                <strong>Privacy-first search.</strong> No tracking. No profiling. No bullshit. 
+                Self-hosted, open source, and built for developers who refuse to be the product.
+            </p>
+        </section>
+        
+        <section class="features">
+            <div class="feature">
+                <div class="feature-icon">◆</div>
+                <h3>Zero Tracking</h3>
+                <p>No analytics. No IP logging. No query storage. Ever.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">◆</div>
+                <h3>Self-Hosted</h3>
+                <p>Run it yourself. No "trust us" required.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">◆</div>
+                <h3>70+ Engines</h3>
+                <p>Aggregated results. Actually good search.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">◆</div>
+                <h3>Open Source</h3>
+                <p>MIT licensed. Audit the code yourself.</p>
+            </div>
+        </section>
+        
+        <section class="signup" id="signup-form">
+            <h2>Get Early Access</h2>
+            <p class="signup-description">Join the waitlist. We'll notify you when we launch.</p>
+            
+            <!-- Netlify Forms: just add data-netlify="true" and Netlify handles everything -->
+            <form 
+                name="waitlist" 
+                method="POST" 
+                data-netlify="true" 
+                data-netlify-honeypot="bot-field"
+                id="waitlist-form"
+            >
+                <!-- Honeypot field for spam protection (hidden from humans) -->
+                <p class="honey-field">
+                    <label>Don't fill this out if you're human: <input name="bot-field"></label>
+                </p>
+                
+                <div class="form-row">
+                    <input type="email" name="email" placeholder="your@email.com" required>
+                    <button type="submit">Join Waitlist</button>
+                </div>
+            </form>
+            
+            <p class="form-note">No spam. Unsubscribe anytime. We respect your privacy (obviously).</p>
+            <p class="success-message">You're on the list. We'll be in touch.</p>
+            <p class="error-message">Something went wrong. Try again or email us directly.</p>
+        </section>
+        
+        <section class="manifesto">
+            <p>Every search you make is tracked, profiled, and sold. Google knows what you're thinking before you finish typing. <strong>That's not a feature. That's surveillance.</strong></p>
+            <p>We're building the alternative. Search that works without watching you. Infrastructure you control. <strong>Privacy by architecture, not by promise.</strong></p>
+        </section>
+        
+        <footer>
+            <div>© 2025 Death2Data. All rights reserved.</div>
+            <div class="footer-links">
+                <a href="https://github.com/deathtodata" target="_blank">GitHub</a>
+                <a href="/cdn-cgi/l/email-protection#a8c0cdc4c4c7e8cccdc9dcc09accc9dcc986cbc7c5">Contact</a>
+            </div>
+        </footer>
+    </div>
+    
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+        // Form submission with AJAX (so user stays on page and sees success message)
+        const form = document.getElementById('waitlist-form');
+        const signupSection = document.getElementById('signup-form');
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Disable button while submitting
+            submitButton.disabled = true;
+            submitButton.textContent = 'Sending...';
+            
+            // Clear any previous error state
+            signupSection.classList.remove('error');
+            
+            try {
+                const formData = new FormData(form);
+                
+                const response = await fetch('/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(formData).toString()
+                });
+                
+                if (response.ok) {
+                    // Show success state
+                    signupSection.classList.add('success');
+                } else {
+                    throw new Error('Form submission failed');
+                }
+            } catch (error) {
+                console.error('Form error:', error);
+                signupSection.classList.add('error');
+            

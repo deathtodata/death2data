@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docs — Death2Data</title>
+    <meta name="description" content="Documentation for Death2Data privacy-first search engine.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --white: #f5f5f5;
+            --gray: #888;
+            --gray-dark: #555;
+            --red: #ff3333;
+            --green: #00ff66;
+            --green-dim: #00cc52;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: var(--black);
+            color: var(--white);
+            font-family: 'Instrument Sans', sans-serif;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        /* Layout */
+        .layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
+        }
+        
+        @media (max-width: 768px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background: #111;
+            border-right: 1px solid #222;
+            padding: 32px 24px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                position: relative;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid #222;
+            }
+        }
+        
+        .sidebar-logo {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--red);
+            text-decoration: none;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .sidebar-tag {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: var(--gray-dark);
+            margin-bottom: 40px;
+        }
+        
+        .nav-section {
+            margin-bottom: 32px;
+        }
+        
+        .nav-title {
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--gray-dark);
+            margin-bottom: 12px;
+        }
+        
+        .nav-link {
+            display: block;
+            color: var(--gray);
+            text-decoration: none;
+            padding: 8px 0;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        
+        .nav-link:hover {
+            color: var(--white);
+        }
+        
+        .nav-link.active {
+            color: var(--green);
+        }
+        
+        /* Main content */
+        .main {
+            padding: 48px 64px;
+            max-width: 800px;
+        }
+        
+        @media (max-width: 768px) {
+            .main {
+                padding: 32px 24px;
+            }
+        }
+        
+        .main h1 {
+            font-family: 'Space Mono', monospace;
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+        
+        .main h2 {
+            font-family: 'Space Mono', monospace;
+            font-size: 20px;
+            margin-top: 48px;
+            margin-bottom: 16px;
+            color: var(--green);
+        }
+        
+        .main h3 {
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+            margin-top: 32px;
+            margin-bottom: 12px;
+        }
+        
+        .main p {
+            color: var(--gray);
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+        
+        .main strong {
+            color: var(--white);
+        }
+        
+        .main ul, .main ol {
+            color: var(--gray);
+            margin-bottom: 16px;
+            padding-left: 24px;
+        }
+        
+        .main li {
+            margin-bottom: 8px;
+        }
+        
+        .main code {
+            font-family: 'Space Mono', monospace;
+            background: #1a1a1a;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: var(--green);
+        }
+        
+        .main pre {
+            background: #111;
+            border: 1px solid #222;
+            padding: 20px;
+            overflow-x: auto;
+            margin-bottom: 24px;
+            border-radius: 4px;
+        }
+        
+        .main pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        .main a {
+            color: var(--green);
+            text-decoration: none;
+        }
+        
+        .main a:hover {
+            text-decoration: underline;
+        }
+        
+        .callout {
+            background: #111;
+            border-left: 3px solid var(--green);
+            padding: 16px 20px;
+            margin: 24px 0;
+        }
+        
+        .callout.warning {
+            border-left-color: var(--red);
+        }
+        
+        .callout p {
+            margin-bottom: 0;
+        }
+        
+        .badge {
+            display: inline-block;
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 4px 8px;
+            background: var(--green);
+            color: var(--black);
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <a href="https://death2data.com" class="sidebar-logo">Death2Data</a>
+            <div class="sidebar-tag">Documentation</div>
+            
+            <div class="nav-section">
+                <div class="nav-title">Getting Started</div>
+                <a href="#overview" class="nav-link active">Overview</a>
+                <a href="#quickstart" class="nav-link">Quick Start</a>
+                <a href="#installation" class="nav-link">Installation</a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-title">Configuration</div>
+                <a href="#settings" class="nav-link">Settings</a>
+                <a href="#engines" class="nav-link">Search Engines</a>
+                <a href="#privacy" class="nav-link">Privacy Options</a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-title">Self-Hosting</div>
+                <a href="#docker" class="nav-link">Docker</a>
+                <a href="#manual" class="nav-link">Manual Setup</a>
+                <a href="#reverse-proxy" class="nav-link">Reverse Proxy</a>
+            </div>
+            
+            <div class="nav-section">
+                <div class="nav-title">Resources</div>
+                <a href="https://github.com/deathtodata" class="nav-link">GitHub</a>
+                <a href="https://death2data.com" class="nav-link">Main Site</a>
+            </div>
+        </nav>
+        
+        <main class="main">
+            <h1 id="overview">Overview</h1>
+            <p><strong>Death2Data</strong> is a privacy-first metasearch engine that aggregates results from 70+ search engines without tracking you. No IP logging. No query storage. No profiling. Ever.</p>
+            
+            <div class="callout">
+                <p><strong>Currently in development.</strong> Join the <a href="https://death2data.com">waitlist</a> to get notified when we launch.</p>
+            </div>
+            
+            <h2 id="quickstart">Quick Start</h2>
+            <p>The fastest way to get Death2Data running locally:</p>
+            
+            <pre><code>docker run -d -p 8080:8080 death2data/search:latest</code></pre>
+            
+            <p>Then open <code>http://localhost:8080</code> in your browser.</p>
+            
+            <h2 id="installation">Installation</h2>
+            <p>Death2Data can be installed in several ways:</p>
+            <ul>
+                <li><strong>Docker</strong> — Recommended for most users</li>
+                <li><strong>Docker Compose</strong> — For production deployments</li>
+                <li><strong>Manual</strong> — For advanced customization</li>
+            </ul>
+            
+            <h3>Requirements</h3>
+            <ul>
+                <li>Docker 20.10+ (for containerized deployment)</li>
+                <li>Python 3.9+ (for manual installation)</li>
+                <li>512MB RAM minimum (1GB+ recommended)</li>
+            </ul>
+            
+            <h2 id="settings">Settings</h2>
+            <p>Death2Data is configured via environment variables or a <code>settings.yml</code> file.</p>
+            
+            <pre><code># Basic settings.yml example
+general:
+  debug: false
+  instance_name: "My Death2Data"
+
+search:
+  safe_search: 0
+  default_lang: "en"
+  
+server:
+  port: 8080
+  bind_address: "0.0.0.0"</code></pre>
+            
+            <h2 id="engines">Search Engines</h2>
+            <p>Death2Data aggregates results from multiple sources. By default, the following engines are enabled:</p>
+            <ul>
+                <li>DuckDuckGo</li>
+                <li>Brave Search</li>
+                <li>Qwant</li>
+                <li>Wikipedia</li>
+                <li>And 70+ more...</li>
+            </ul>
+            
+            <p>You can enable/disable individual engines in the settings or through the web UI.</p>
+            
+            <h2 id="privacy">Privacy Options</h2>
+            <p>Death2Data is built with privacy as the default:</p>
+            <ul>
+                <li><strong>No logging</strong> — Search queries are never stored</li>
+                <li><strong>No tracking</strong> — No cookies, fingerprinting, or analytics</li>
+                <li><strong>Proxy images</strong> — Images are proxied to prevent tracking pixels</li>
+                <li><strong>Remove trackers</strong> — URL tracking parameters are stripped</li>
+            </ul>
+            
+            <div class="callout warning">
+                <p><strong>Note:</strong> While Death2Data doesn't track you, the upstream search engines may. For maximum privacy, use Death2Data over Tor.</p>
+            </div>
+            
+            <h2 id="docker">Docker Deployment</h2>
+            <p>Using Docker Compose for a production-ready setup:</p>
+            
+            <pre><code># docker-compose.yml
+version: '3'
+services:
+  death2data:
+    image: death2data/search:latest
+    container_name: death2data
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./settings.yml:/etc/death2data/settings.yml:ro
+    environment:
+      - BASE_URL=https://search.yourdomain.com</code></pre>
+            
+            <p>Run with: <code>docker-compose up -d</code></p>
+            
+            <h2 id="manual">Manual Setup</h2>
+            <p>For manual installation:</p>
+            
+            <pre><code># Clone the repository
+git clone https://github.com/deathtodata/search.git
+cd search
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the server
+python death2data.py</code></pre>
+            
+            <h2 id="reverse-proxy">Reverse Proxy</h2>
+            <p>Example Nginx configuration for running behind a reverse proxy:</p>
+            
+            <pre><code>server {
+    listen 443 ssl http2;
+    server_name search.yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</code></pre>
+        </main>
+    </div>
+</body>
+</html>
