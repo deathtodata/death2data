@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tools | Death2Data</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:ui-monospace,monospace;
+  background:#000;
+  color:#fff;
+  min-height:100vh;
+}
+
+/* Header */
+header{
+  background:#0a0a0a;
+  border-bottom:1px solid #222;
+  padding:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.logo{
+  font-size:1.2rem;
+  font-weight:700;
+  color:#0f0;
+}
+.token-status{
+  font-size:0.75rem;
+  color:#666;
+}
+.token-status.valid{color:#0f0}
+.token-status.invalid{color:#f00}
+
+/* Main */
+main{
+  max-width:1200px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+h1{
+  font-size:clamp(1.5rem,5vw,2.5rem);
+  margin-bottom:30px;
+}
+h1 span{color:#0f0}
+
+/* Tools Grid */
+.tools-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:20px;
+  margin-top:30px;
+}
+.tool-card{
+  background:#0a0a0a;
+  border:1px solid #222;
+  padding:30px;
+  cursor:pointer;
+  transition:border-color 0.2s;
+}
+.tool-card:hover{
+  border-color:#0f0;
+}
+.tool-card h2{
+  font-size:1.2rem;
+  margin-bottom:15px;
+  color:#0f0;
+}
+.tool-card p{
+  color:#888;
+  font-size:0.9rem;
+  line-height:1.6;
+}
+.tool-card.disabled{
+  opacity:0.5;
+  cursor:not-allowed;
+}
+.tool-card.disabled:hover{
+  border-color:#222;
+}
+.coming-soon{
+  font-size:0.7rem;
+  color:#666;
+  letter-spacing:0.2em;
+  margin-top:10px;
+}
+
+/* Access Denied */
+.access-denied{
+  text-align:center;
+  padding:60px 20px;
+}
+.access-denied h1{
+  color:#f00;
+}
+.btn{
+  display:inline-block;
+  padding:18px 40px;
+  background:#0f0;
+  color:#000;
+  text-decoration:none;
+  font-weight:700;
+  margin-top:20px;
+}
+.btn:hover{background:#fff}
+
+@media(max-width:768px){
+  .tools-grid{
+    grid-template-columns:1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">D2D TOOLS</div>
+  <div class="token-status" id="token-status">Validating...</div>
+</header>
+
+<main id="main-content">
+  <!-- Content loaded by JavaScript after token validation -->
+</main>
+
+<script>
+// Validate token
+async function validateToken() {
+  // Get token from URL or localStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  let token = urlParams.get('token');
+
+  if (!token) {
+    token = localStorage.getItem('d2d_access_token');
+  }
+
+  if (!token) {
+    showAccessDenied('No token provided');
+    return;
+  }
+
+  // Store token
+  localStorage.setItem('d2d_access_token', token);
+
+  // In production, validate with API: GET /api/validate?token=xxx
+  // For now, just check if it starts with d2d_
+  const valid = token.startsWith('d2d_') && token.length > 10;
+
+  if (valid) {
+    showTools(token);
+  } else {
+    showAccessDenied('Invalid token');
+  }
+}
+
+function showTools(token) {
+  const statusEl = document.getElementById('token-status');
+  statusEl.textContent = `✓ Access Valid (Token: ${token.substr(0, 12)}...)`;
+  statusEl.className = 'token-status valid';
+
+  document.getElementById('main-content').innerHTML = `
+    <h1><span>YOUR</span> PRIVACY TOOLS</h1>
+
+    <p style="color:#888;margin-bottom:30px">
+      All tools are local-first. Your data never leaves your device.
+    </p>
+
+    <div class="tools-grid">
+      <div class="tool-card" onclick="openTool('search')">
+        <h2>PRIVACY SEARCH</h2>
+        <p>Search without tracking. Powered by SearXNG. No logs, no profiling, no bullshit.</p>
+      </div>
+
+      <div class="tool-card" onclick="openTool('reasoning')">
+        <h2>AI REASONING WIKI</h2>
+        <p>Local LLM-powered reasoning engine. Uses Ollama. Your queries stay on your machine.</p>
+      </div>
+
+      <div class="tool-card" onclick="openTool('parser')">
+        <h2>EXPORT PARSER</h2>
+        <p>Turn Google Takeout, Apple Privacy exports into readable format. Process locally.</p>
+      </div>
+
+      <div class="tool-card" onclick="openTool('leak-score')">
+        <h2>LEAK SCORE</h2>
+        <p>Check how exposed you are. Email, phone, passwords in breaches. Check locally.</p>
+      </div>
+
+      <div class="tool-card disabled">
+        <h2>IDENTITY VAULT</h2>
+        <p>Manage your cryptographic identities. Generate keys, sign messages, verify signatures.</p>
+        <div class="coming-soon">COMING SOON</div>
+      </div>
+
+      <div class="tool-card disabled">
+        <h2>DATA SANITIZER</h2>
+        <p>Strip metadata from photos, PDFs, documents before sharing. Remove EXIF, GPS, more.</p>
+        <div class="coming-soon">COMING SOON</div>
+      </div>
+    </div>
+
+    <div style="margin-top:60px;padding-top:40px;border-top:1px solid #222;text-align:center">
+      <p style="color:#666;font-size:0.9rem">
+        Token expires in 30 days. All tools will remain accessible until then.
+        <br><br>
+        Questions? Email hello@death2data.com
+      </p>
+    </div>
+  `;
+}
+
+function showAccessDenied(reason) {
+  const statusEl = document.getElementById('token-status');
+  statusEl.textContent = `✗ ${reason}`;
+  statusEl.className = 'token-status invalid';
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="access-denied">
+      <h1>ACCESS DENIED</h1>
+      <p style="color:#888;margin-top:20px">
+        ${reason}. You need a valid access token to use D2D tools.
+      </p>
+      <a href="/" class="btn">PURCHASE ACCESS →</a>
+    </div>
+  `;
+}
+
+function openTool(toolName) {
+  // In production, load the actual tool
+  // For now, show coming soon message
+  alert(`${toolName.toUpperCase()} tool will open here.\n\nBuilding this week!`);
+
+  // Example URLs for when tools are built:
+  // search: /tools/search?token=xxx
+  // reasoning: /tools/reasoning?token=xxx
+  // parser: /tools/parser?token=xxx
+  // leak-score: /tools/leak-score?token=xxx
+}
+
+// Validate on load
+validateToken();
+</script>
+
+</body>
+</html>
