@@ -75,22 +75,24 @@ p{
 <div class="container">
   <h1><span>✓</span> PAYMENT SUCCESSFUL</h1>
 
-  <p>Welcome to Death2Data. You now have access to all privacy tools for 30 days.</p>
+  <p>Welcome to Death2Data. Your payment has been processed.</p>
 
   <div class="token-box">
-    <p style="color:#666;font-size:0.75rem;letter-spacing:0.2em;margin-bottom:15px">YOUR ACCESS TOKEN</p>
-    <div class="token" id="token">Loading...</div>
-    <button class="btn" onclick="copyToken()">COPY TOKEN</button>
+    <p style="color:#666;font-size:0.75rem;letter-spacing:0.2em;margin-bottom:15px">NEXT STEPS</p>
+    <div style="color:#888;font-size:0.95rem;line-height:1.8;text-align:left">
+      1. Check your email from Stripe<br>
+      2. Access your Customer Portal to manage subscription<br>
+      3. Tools will be delivered via email within 24 hours
+    </div>
   </div>
 
-  <p>This token is your key to accessing all D2D tools. Save it somewhere safe.</p>
+  <p>Your cryptographic identity from signup will be linked to your subscription. No passwords needed.</p>
 
-  <a href="/tools.html" class="btn">ACCESS TOOLS →</a>
-
-  <p class="small">
-    You'll also receive an email with your access token and instructions.
-    <br><br>
-    Token expires: <span id="expires">30 days from now</span>
+  <p style="margin-top:30px;color:#666;font-size:0.9rem">
+    <strong>What happens next:</strong><br>
+    • You'll receive access instructions via email<br>
+    • Your subscription is managed through Stripe Customer Portal<br>
+    • Cancel anytime from the portal link in your email
   </p>
 
   <div style="margin-top:40px;padding-top:40px;border-top:1px solid #222">
@@ -99,45 +101,18 @@ p{
 </div>
 
 <script>
-// Get token from URL parameter or generate one for demo
+// Save payment timestamp
 const urlParams = new URLSearchParams(window.location.search);
-const token = urlParams.get('token');
+const paymentSuccess = urlParams.get('success');
 
-if (token) {
-  // Token provided in URL
-  document.getElementById('token').textContent = token;
-  localStorage.setItem('d2d_access_token', token);
-} else {
-  // Check localStorage
-  const savedToken = localStorage.getItem('d2d_access_token');
-  if (savedToken) {
-    document.getElementById('token').textContent = savedToken;
-  } else {
-    // Generate a placeholder (in production, this comes from webhook)
-    const placeholderToken = 'd2d_' + Array.from({length: 32}, () =>
-      Math.floor(Math.random() * 16).toString(16)
-    ).join('');
-    document.getElementById('token').textContent = placeholderToken;
-    localStorage.setItem('d2d_access_token', placeholderToken);
-  }
+if (paymentSuccess) {
+  localStorage.setItem('d2d_payment_timestamp', new Date().toISOString());
 }
 
-// Set expiration date
-const expires = new Date();
-expires.setDate(expires.getDate() + 30);
-document.getElementById('expires').textContent = expires.toLocaleDateString();
-
-function copyToken() {
-  const token = document.getElementById('token').textContent;
-  navigator.clipboard.writeText(token);
-
-  // Visual feedback
-  const btn = event.target;
-  const originalText = btn.textContent;
-  btn.textContent = '✓ COPIED';
-  setTimeout(() => {
-    btn.textContent = originalText;
-  }, 2000);
+// Store identity info if it exists in localStorage from signup
+const anonName = localStorage.getItem('d2d_anon_name');
+if (anonName) {
+  console.log('Identity linked:', anonName);
 }
 </script>
 

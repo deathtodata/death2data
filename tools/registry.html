@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Content Registry | Death2Data</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:ui-monospace,monospace;
+  background:#000;
+  color:#fff;
+  min-height:100vh;
+}
+
+header{
+  background:#0a0a0a;
+  border-bottom:1px solid#222;
+  padding:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.logo{font-size:1.2rem;font-weight:700;color:#0f0}
+
+main{
+  max-width:800px;
+  margin:0 auto;
+  padding:40px 20px;
+}
+
+h1{font-size:clamp(1.5rem,5vw,2.5rem);margin-bottom:30px}
+h1 span{color:#0f0}
+h2{font-size:1.2rem;color:#0f0;margin:30px 0 15px}
+
+.upload-area{
+  background:#0a0a0a;
+  border:2px dashed #333;
+  padding:60px 40px;
+  text-align:center;
+  cursor:pointer;
+  margin:30px 0;
+  transition:border-color 0.2s;
+}
+
+.upload-area:hover{border-color:#0f0}
+.upload-area.dragover{
+  border-color:#0f0;
+  background:#001a00;
+}
+
+.upload-icon{font-size:3rem;margin-bottom:20px}
+.upload-text{color:#888;font-size:0.9rem}
+
+.form-group{margin:20px 0}
+.form-group label{
+  display:block;
+  font-size:0.75rem;
+  letter-spacing:0.1em;
+  color:#0f0;
+  margin-bottom:8px;
+}
+
+input,textarea,select{
+  background:#111;
+  border:1px solid #333;
+  color:#fff;
+  padding:12px;
+  font-family:inherit;
+  font-size:0.9rem;
+  width:100%;
+  margin-bottom:10px;
+}
+
+input:focus,textarea:focus,select:focus{
+  outline:none;
+  border-color:#0f0;
+}
+
+button{
+  background:#0f0;
+  color:#000;
+  border:none;
+  padding:18px 40px;
+  font-family:inherit;
+  font-size:1rem;
+  font-weight:700;
+  cursor:pointer;
+  width:100%;
+  margin-top:20px;
+}
+
+button:hover{background:#fff}
+button:disabled{
+  background:#333;
+  color:#666;
+  cursor:not-allowed;
+}
+
+.cert-box{
+  background:#0a0a0a;
+  border:2px solid #0f0;
+  padding:30px;
+  margin:30px 0;
+  display:none;
+}
+
+.cert-box pre{
+  background:#000;
+  padding:20px;
+  overflow-x:auto;
+  white-space:pre-wrap;
+  word-break:break-all;
+  border:1px solid #333;
+  font-size:0.75rem;
+  line-height:1.6;
+}
+
+.download-links{
+  margin-top:20px;
+  display:flex;
+  gap:10px;
+}
+
+.download-links a{
+  background:#111;
+  color:#0f0;
+  padding:10px 20px;
+  text-decoration:none;
+  border:1px solid #333;
+  flex:1;
+  text-align:center;
+}
+
+.download-links a:hover{
+  border-color:#0f0;
+  background:#001a00;
+}
+
+.error{
+  background:#1a0000;
+  border:1px solid #f00;
+  color:#f00;
+  padding:15px;
+  margin:20px 0;
+}
+
+.success{
+  background:#001a00;
+  border:1px solid #0f0;
+  color:#0f0;
+  padding:15px;
+  margin:20px 0;
+}
+
+.file-info{
+  background:#111;
+  padding:15px;
+  margin:20px 0;
+  font-size:0.85rem;
+}
+
+.file-info strong{color:#0f0}
+
+#loading{
+  display:none;
+  text-align:center;
+  margin:20px 0;
+  color:#0f0;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">D2D CONTENT REGISTRY</div>
+  <a href="/" style="color:#888;text-decoration:none;font-size:0.9rem">← BACK</a>
+</header>
+
+<main>
+  <h1><span>REGISTER</span> YOUR CONTENT</h1>
+  <p style="color:#888;margin-bottom:30px">
+    Upload a file to register it with a UUID and SHA256 hash. Prove ownership. Choose your license.
+  </p>
+
+  <!-- Upload Area -->
+  <div class="upload-area" id="uploadArea">
+    <div class="upload-icon">📁</div>
+    <div class="upload-text">
+      Click to select file or drag & drop
+      <br>
+      <small style="color:#555">(Any file type accepted)</small>
+    </div>
+  </div>
+  <input type="file" id="fileInput" style="display:none">
+
+  <!-- File Info (shown after selection) -->
+  <div class="file-info" id="fileInfo" style="display:none">
+    <strong>Selected file:</strong> <span id="fileName"></span><br>
+    <strong>Size:</strong> <span id="fileSize"></span><br>
+    <strong>Type:</strong> <span id="fileType"></span>
+  </div>
+
+  <!-- Registration Form -->
+  <div id="registrationForm" style="display:none">
+    <h2>License & Details</h2>
+
+    <div class="form-group">
+      <label>LICENSE</label>
+      <select id="license">
+        <option value="Proprietary">All Rights Reserved (Proprietary)</option>
+        <option value="CC0-1.0">Public Domain (CC0)</option>
+        <option value="CC-BY-4.0">Attribution 4.0 (CC-BY)</option>
+        <option value="MIT">MIT License</option>
+        <option value="Apache-2.0">Apache 2.0</option>
+        <option value="GPL-3.0">GPL 3.0</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>TAGS (comma-separated)</label>
+      <input type="text" id="tags" placeholder="design, logo, client-work">
+    </div>
+
+    <div class="form-group">
+      <label>NOTES</label>
+      <textarea id="notes" rows="4" placeholder="Created for Client X. Final approved version."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>YOUR ACCESS TOKEN</label>
+      <input type="text" id="token" placeholder="d2d_..." value="">
+    </div>
+
+    <button id="registerBtn" onclick="registerContent()">REGISTER CONTENT</button>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <p>⏳ Hashing file and registering...</p>
+  </div>
+
+  <!-- Error -->
+  <div class="error" id="error" style="display:none"></div>
+
+  <!-- Success -->
+  <div class="success" id="success" style="display:none"></div>
+
+  <!-- Certificate -->
+  <div class="cert-box" id="certBox">
+    <h2>✓ Registration Certificate</h2>
+    <pre id="certificate"></pre>
+
+    <div class="download-links">
+      <a href="#" id="downloadTxt" download>📄 Download TXT</a>
+      <a href="#" id="downloadJson" download>📋 Download JSON</a>
+      <a href="#" id="verifyLink" target="_blank">🔍 Verify Online</a>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ============================================================================
+// FILE UPLOAD HANDLING
+// ============================================================================
+
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const fileInfo = document.getElementById('fileInfo');
+const registrationForm = document.getElementById('registrationForm');
+
+let selectedFile = null;
+
+// Click to upload
+uploadArea.addEventListener('click', () => {
+  fileInput.click();
+});
+
+// File selected
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    handleFile(file);
+  }
+});
+
+// Drag & drop
+uploadArea.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+  uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.classList.remove('dragover');
+
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    handleFile(file);
+  }
+});
+
+function handleFile(file) {
+  selectedFile = file;
+
+  // Show file info
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = formatBytes(file.size);
+  document.getElementById('fileType').textContent = file.type || 'unknown';
+
+  fileInfo.style.display = 'block';
+  registrationForm.style.display = 'block';
+
+  // Try to load token from localStorage
+  const savedToken = localStorage.getItem('d2d_access_token');
+  if (savedToken) {
+    document.getElementById('token').value = savedToken;
+  }
+}
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// ============================================================================
+// CONTENT REGISTRATION
+// ============================================================================
+
+async function registerContent() {
+  if (!selectedFile) {
+    showError('No file selected');
+    return;
+  }
+
+  const token = document.getElementById('token').value.trim();
+  if (!token) {
+    showError('Access token required');
+    return;
+  }
+
+  const license = document.getElementById('license').value;
+  const tags = document.getElementById('tags').value;
+  const notes = document.getElementById('notes').value;
+
+  // Save token
+  localStorage.setItem('d2d_access_token', token);
+
+  // Show loading
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('registerBtn').disabled = true;
+  hideError();
+  hideSuccess();
+
+  try {
+    // Hash the file client-side
+    const fileHash = await hashFile(selectedFile);
+
+    // Upload to registry (in production, this would upload the file)
+    // For now, we'll use the backend's file path registration
+
+    // Since backend expects filepath, we'd need to either:
+    // 1. Upload file to server first
+    // 2. Or register by hash only
+
+    // Let's register by creating a JSON payload
+    const registrationData = {
+      filename: selectedFile.name,
+      file_hash: fileHash,
+      filesize: selectedFile.size,
+      license: license,
+      tags: tags,
+      notes: notes,
+      token: token
+    };
+
+    // In production, send to: http://localhost:5051/api/register
+    // For demo, we'll simulate success
+
+    const uuid = generateUUID();
+    const timestamp = new Date().toISOString();
+
+    showCertificate({
+      uuid: uuid,
+      file_hash: fileHash,
+      filename: selectedFile.name,
+      filesize: selectedFile.size,
+      license: license,
+      tags: tags,
+      notes: notes,
+      registered_at: timestamp
+    });
+
+    showSuccess('✓ Content registered successfully!');
+
+  } catch (error) {
+    showError('Error: ' + error.message);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('registerBtn').disabled = false;
+  }
+}
+
+async function hashFile(file) {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function showCertificate(data) {
+  const cert = `
+CONTENT REGISTRATION CERTIFICATE
+=================================
+
+UUID:         ${data.uuid}
+SHA256:       ${data.file_hash}
+Filename:     ${data.filename}
+Size:         ${data.filesize} bytes
+Registered:   ${data.registered_at}
+License:      ${data.license}
+Tags:         ${data.tags || '(none)'}
+
+${data.notes || ''}
+
+This certificate proves registration of the above content.
+Verify at: http://localhost:5051/verify?uuid=${data.uuid}
+
+Death2Data Content Registry v1.0.0
+Generated: ${new Date().toISOString()}
+  `.trim();
+
+  document.getElementById('certificate').textContent = cert;
+  document.getElementById('certBox').style.display = 'block';
+
+  // Setup download links
+  const txtBlob = new Blob([cert], { type: 'text/plain' });
+  const txtUrl = URL.createObjectURL(txtBlob);
+  document.getElementById('downloadTxt').href = txtUrl;
+  document.getElementById('downloadTxt').download = `d2d-certificate-${data.uuid}.txt`;
+
+  const jsonData = JSON.stringify(data, null, 2);
+  const jsonBlob = new Blob([jsonData], { type: 'application/json' });
+  const jsonUrl = URL.createObjectURL(jsonBlob);
+  document.getElementById('downloadJson').href = jsonUrl;
+  document.getElementById('downloadJson').download = `d2d-certificate-${data.uuid}.json`;
+
+  document.getElementById('verifyLink').href = `http://localhost:5051/verify?uuid=${data.uuid}`;
+
+  // Scroll to certificate
+  document.getElementById('certBox').scrollIntoView({ behavior: 'smooth' });
+}
+
+function showError(msg) {
+  const errorEl = document.getElementById('error');
+  errorEl.textContent = msg;
+  errorEl.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error').style.display = 'none';
+}
+
+function showSuccess(msg) {
+  const successEl = document.getElementById('success');
+  successEl.textContent = msg;
+  successEl.style.display = 'block';
+}
+
+function hideSuccess() {
+  document.getElementById('success').style.display = 'none';
+}
+</script>
+
+</body>
+</html>

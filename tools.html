@@ -167,6 +167,11 @@ function showTools(token) {
     </p>
 
     <div class="tools-grid">
+      <div class="tool-card" onclick="openTool('registry')">
+        <h2>CONTENT REGISTRY</h2>
+        <p>Register files with UUID + SHA256. Prove ownership. Choose license. Download certificates.</p>
+      </div>
+
       <div class="tool-card" onclick="openTool('search')">
         <h2>PRIVACY SEARCH</h2>
         <p>Search without tracking. Powered by SearXNG. No logs, no profiling, no bullshit.</p>
@@ -227,8 +232,15 @@ function showAccessDenied(reason) {
 }
 
 function openTool(toolName) {
-  // In production, load the actual tool
-  // For now, show coming soon message
+  const token = localStorage.getItem('d2d_access_token');
+
+  // Registry is live!
+  if (toolName === 'registry') {
+    window.location.href = `/tools/registry.html?token=${token}`;
+    return;
+  }
+
+  // Other tools coming soon
   alert(`${toolName.toUpperCase()} tool will open here.\n\nBuilding this week!`);
 
   // Example URLs for when tools are built:

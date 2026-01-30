@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Export Your Data | Death2Data</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:ui-monospace,monospace;
+  background:#000;
+  color:#fff;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.container{
+  max-width:600px;
+  text-align:center;
+}
+h1{
+  font-size:clamp(1.5rem,5vw,2.5rem);
+  margin-bottom:20px;
+}
+h1 span{color:#f00}
+p{
+  color:#888;
+  line-height:1.7;
+  margin-bottom:20px;
+}
+.export-box{
+  background:#0a0a0a;
+  border:2px solid #f00;
+  padding:30px;
+  margin:30px 0;
+  text-align:left;
+}
+.export-box h3{
+  font-size:0.7rem;
+  letter-spacing:0.2em;
+  color:#f00;
+  margin-bottom:20px;
+}
+.export-box ul{
+  list-style:none;
+}
+.export-box li{
+  padding:10px 0;
+  color:#888;
+  border-bottom:1px solid #111;
+}
+.btn{
+  display:inline-block;
+  padding:18px 40px;
+  background:#f00;
+  color:#000;
+  text-decoration:none;
+  font-weight:700;
+  margin:10px 5px;
+  border:none;
+  font-family:inherit;
+  font-size:1rem;
+  cursor:pointer;
+}
+.btn:hover{background:#fff}
+.btn-outline{
+  background:none;
+  border:1px solid #333;
+  color:#666;
+}
+.btn-outline:hover{
+  border-color:#f00;
+  color:#f00;
+  background:none;
+}
+#export-data{
+  background:#050505;
+  border:1px solid #222;
+  padding:20px;
+  margin:20px 0;
+  text-align:left;
+  max-height:300px;
+  overflow-y:auto;
+  display:none;
+}
+#export-data pre{
+  color:#0f0;
+  font-size:0.8rem;
+  white-space:pre-wrap;
+  word-break:break-all;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>EXPORT YOUR <span>DATA</span></h1>
+
+  <p>Sorry to see you go. Before you cancel your subscription, export everything you created with Death2Data.</p>
+
+  <div class="export-box">
+    <h3>YOUR DATA INCLUDES</h3>
+    <ul>
+      <li>Your cryptographic identity (public + private keys)</li>
+      <li>All search queries (stored locally in your browser)</li>
+      <li>Any bookmarks or saved items</li>
+      <li>Account creation timestamp</li>
+    </ul>
+  </div>
+
+  <button class="btn" onclick="exportData()">DOWNLOAD ALL MY DATA</button>
+
+  <div id="export-data">
+    <pre id="data-output"></pre>
+  </div>
+
+  <p style="margin-top:30px;color:#666;font-size:0.9rem">
+    <strong>After export:</strong><br>
+    • All data is removed from our systems (it was local anyway)<br>
+    • Your subscription will cancel at end of billing period<br>
+    • You can re-join anytime with same identity keys
+  </p>
+
+  <div style="margin-top:40px;padding-top:40px;border-top:1px solid #222">
+    <p style="color:#666;font-size:0.9rem">
+      Changed your mind?
+      <a href="/" style="color:#f00">Go back to homepage</a>
+    </p>
+  </div>
+</div>
+
+<script>
+function exportData() {
+  // Gather all D2D data from localStorage
+  const data = {
+    exported_at: new Date().toISOString(),
+    identity: {
+      anon_name: localStorage.getItem('d2d_anon_name'),
+      public_key: localStorage.getItem('d2d_public_key'),
+      private_key: localStorage.getItem('d2d_private_key'),
+      created: localStorage.getItem('d2d_created')
+    },
+    payment: {
+      timestamp: localStorage.getItem('d2d_payment_timestamp'),
+      access_token: localStorage.getItem('d2d_access_token')
+    },
+    queries: JSON.parse(localStorage.getItem('d2d_queries') || '[]'),
+    bookmarks: JSON.parse(localStorage.getItem('d2d_bookmarks') || '[]')
+  };
+
+  // Show data
+  document.getElementById('data-output').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('export-data').style.display = 'block';
+
+  // Download as JSON
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'd2d-export-' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+
+  // Also download as human-readable text
+  const textContent = `
+DEATH2DATA EXPORT
+================================================================================
+
+Exported: ${data.exported_at}
+
+IDENTITY
+--------
+Anonymous Name: ${data.identity.anon_name}
+Created: ${data.identity.created}
+
+Public Key:
+${data.identity.public_key}
+
+Private Key (KEEP SECRET):
+${data.identity.private_key}
+
+PAYMENT
+-------
+Payment Timestamp: ${data.payment.timestamp}
+Access Token: ${data.payment.access_token}
+
+QUERIES (${data.queries.length} total)
+-------
+${data.queries.length > 0 ? data.queries.map(q => `- ${q}`).join('\n') : '(none)'}
+
+BOOKMARKS (${data.bookmarks.length} total)
+---------
+${data.bookmarks.length > 0 ? data.bookmarks.map(b => `- ${b}`).join('\n') : '(none)'}
+
+================================================================================
+
+You can re-import this data if you ever rejoin Death2Data.
+Your private key will always work as your identity.
+
+`.trim();
+
+  const textBlob = new Blob([textContent], { type: 'text/plain' });
+  const textUrl = URL.createObjectURL(textBlob);
+  const textA = document.createElement('a');
+  textA.href = textUrl;
+  textA.download = 'd2d-export-' + new Date().toISOString().split('T')[0] + '.txt';
+  textA.click();
+  URL.revokeObjectURL(textUrl);
+}
+</script>
+
+</body>
+</html>
