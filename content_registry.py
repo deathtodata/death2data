@@ -322,21 +322,39 @@ def watch_downloads(user_id):
         sys.exit(1)
 
     watch_path = CONFIG["watch_folder"]
+    processed = set()  # Track processed files to avoid duplicates
 
     class RegisterHandler(FileSystemEventHandler):
         def on_created(self, event):
             if not event.is_directory:
                 filepath = event.src_path
+
+                # Skip if already processed
+                if filepath in processed:
+                    return
+
                 # Wait for file to finish writing
                 import time
                 time.sleep(2)
 
                 if Path(filepath).exists() and not Path(filepath).name.startswith("."):
+                    # Check if already registered by hash
+                    file_hash = hash_file(filepath)
+                    conn = get_db()
+                    existing = conn.execute("SELECT uuid FROM content WHERE file_hash = ?", (file_hash,)).fetchone()
+                    conn.close()
+
+                    if existing:
+                        print(f"⏭  Already registered: {Path(filepath).name} (UUID: {existing['uuid']})")
+                        processed.add(filepath)
+                        return
+
                     print(f"📁 New file detected: {Path(filepath).name}")
                     content_uuid, error = register_content(filepath, user_id, auto=True)
 
                     if content_uuid:
                         print(f"   ✓ Registered: {content_uuid}")
+                        processed.add(filepath)
                     else:
                         print(f"   ✗ Failed: {error}")
 

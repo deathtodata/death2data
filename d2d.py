@@ -29,7 +29,12 @@ import urllib.request
 DB = "d2d.db"
 PORT = int(os.environ.get("PORT", 5052))  # Changed to 5052 to avoid conflict
 SEARXNG = ["https://searx.be", "https://search.sapti.me"]
-VERSION = "v1.2.0"
+VERSION = "v1.3.0"
+
+# Stripe config
+STRIPE_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PRICE_ID = os.environ.get("STRIPE_PRICE_ID", "")
+DOMAIN = os.environ.get("DOMAIN", f"http://localhost:{PORT}")
 
 # Tier limits (searches/day, saves/month)
 TIERS = {
@@ -48,6 +53,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
             token_hash TEXT NOT NULL,
+            stripe_customer_id TEXT,
             tier TEXT DEFAULT 'free',
             cohort TEXT DEFAULT 'A',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -92,6 +98,26 @@ def init_db():
             cohort TEXT NOT NULL,
             enabled INTEGER DEFAULT 1,
             UNIQUE(feature_name, cohort)
+        );
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL,
+            description TEXT,
+            category TEXT DEFAULT 'other',
+            score INTEGER DEFAULT 50,
+            stars INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS project_stars (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            project_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, project_id),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
         );
     """)
     conn.commit()
@@ -191,21 +217,64 @@ def set_feature_flag(feature_name, cohort, enabled):
     conn.close()
 
 # ============================================================================
+# GOLDEN TICKET (PROJECT DISCOVERY)
+# ============================================================================
+
+def get_projects():
+    """Get all active projects"""
+    conn = db()
+    rows = conn.execute("SELECT * FROM projects WHERE status='active' ORDER BY score DESC, stars DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def add_project(name, url, description, category, score=50):
+    """Add a new project"""
+    conn = db()
+    conn.execute("INSERT INTO projects (name, url, description, category, score) VALUES (?, ?, ?, ?, ?)",
+                (name, url, description, category, score))
+    conn.commit()
+    conn.close()
+
+def star_project(user_id, project_id):
+    """User stars a project"""
+    conn = db()
+    try:
+        conn.execute("INSERT INTO project_stars (user_id, project_id) VALUES (?, ?)",
+                    (user_id, project_id))
+        conn.execute("UPDATE projects SET stars = stars + 1 WHERE id = ?", (project_id,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        pass  # Already starred
+    conn.close()
+
+def get_user_stars(user_id):
+    """Get project IDs user has starred"""
+    conn = db()
+    rows = conn.execute("SELECT project_id FROM project_stars WHERE user_id = ?", (user_id,)).fetchall()
+    conn.close()
+    return {r['project_id'] for r in rows}
+
+# ============================================================================
 # AUTH
 # ============================================================================
 
-def signup(email):
+def signup(email, stripe_customer_id=None):
+    """Create user with email and optional Stripe customer ID"""
     conn = db()
     token = secrets.token_hex(32)
     try:
-        conn.execute("INSERT INTO users (email, token_hash) VALUES (?, ?)",
-                    (email, hashlib.sha256(token.encode()).hexdigest()))
+        conn.execute("INSERT INTO users (email, token_hash, stripe_customer_id) VALUES (?, ?, ?)",
+                    (email, hashlib.sha256(token.encode()).hexdigest(), stripe_customer_id))
         conn.commit()
         conn.close()
         return token, None
     except sqlite3.IntegrityError:
+        # User exists, update token and customer ID
+        conn.execute("UPDATE users SET token_hash = ?, stripe_customer_id = ? WHERE email = ?",
+                    (hashlib.sha256(token.encode()).hexdigest(), stripe_customer_id, email))
+        conn.commit()
         conn.close()
-        return None, "Email exists"
+        return token, None
 
 def login(token):
     if not token: return None
@@ -214,6 +283,59 @@ def login(token):
                        (hashlib.sha256(token.encode()).hexdigest(),)).fetchone()
     conn.close()
     return dict(user) if user else None
+
+# ============================================================================
+# STRIPE
+# ============================================================================
+
+def create_checkout_session():
+    """Create Stripe Checkout Session for $1/month"""
+    if not STRIPE_KEY or not STRIPE_PRICE_ID:
+        return None, "Stripe not configured"
+
+    data = {
+        "mode": "subscription",
+        "payment_method_types[]": "card",
+        "line_items[0][price]": STRIPE_PRICE_ID,
+        "line_items[0][quantity]": "1",
+        "success_url": f"{DOMAIN}/success?session_id={{CHECKOUT_SESSION_ID}}",
+        "cancel_url": f"{DOMAIN}/",
+    }
+
+    body = "&".join(f"{k}={v}" for k, v in data.items())
+
+    req = urllib.request.Request(
+        "https://api.stripe.com/v1/checkout/sessions",
+        data=body.encode(),
+        headers={
+            "Authorization": f"Bearer {STRIPE_KEY}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            session = json.loads(resp.read().decode())
+            return session.get("url"), None
+    except urllib.error.HTTPError as e:
+        error = json.loads(e.read().decode())
+        return None, error.get("error", {}).get("message", "Stripe error")
+
+def get_checkout_session(session_id):
+    """Get details of a completed checkout"""
+    if not STRIPE_KEY:
+        return None
+
+    req = urllib.request.Request(
+        f"https://api.stripe.com/v1/checkout/sessions/{session_id}",
+        headers={"Authorization": f"Bearer {STRIPE_KEY}"}
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode())
+    except:
+        return None
 
 # ============================================================================
 # SEARCH
@@ -371,7 +493,7 @@ footer{margin-top:40px;padding:20px 0;border-top:1px solid #222;text-align:cente
 """
 
 def html(title, body, user=None):
-    nav = '<a href="/search">Search</a><a href="/saved">Saved</a><a href="/content">Content</a><a href="/changelog">Changelog</a><a href="/export">Export</a><a href="/logout">Logout</a>' if user else '<a href="/">Login</a><a href="/changelog">Changelog</a>'
+    nav = '<a href="/search">Search</a><a href="/saved">Saved</a><a href="/content">Content</a><a href="/discover">Discover</a><a href="/changelog">Changelog</a><a href="/export">Export</a><a href="/logout">Logout</a>' if user else '<a href="/">Login</a><a href="/stats">Stats</a><a href="/changelog">Changelog</a>'
     return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title><style>{CSS}</style></head><body>
@@ -442,6 +564,59 @@ def page_analytics(user):
     </div>
     """
 
+def page_discover(user):
+    """Golden Ticket - Project Discovery"""
+    projects = get_projects()
+    user_stars = get_user_stars(user['id']) if user else set()
+
+    h = "<h2>Golden Ticket: Project Discovery</h2>"
+    h += '<p style="color:#888;margin-bottom:20px">Star projects you think will succeed. Early stars = bragging rights.</p>'
+
+    if not projects:
+        h += '<div class="empty">No projects yet. Check back soon!</div>'
+    else:
+        for p in projects:
+            starred = p['id'] in user_stars
+            star_btn = f'<span style="color:#666">★ {p["stars"]}</span>' if starred else f'<form method="POST" action="/star" style="display:inline"><input type="hidden" name="project_id" value="{p["id"]}"><button style="background:none;border:none;color:#0f0;cursor:pointer;font-size:14px">☆ Star ({p["stars"]})</button></form>'
+
+            h += f"""<div class="card">
+                <h3>{p['name']}</h3>
+                <p>{p['description']}</p>
+                <small style="color:#666">Score: {p['score']}/100 · {p['category']}</small><br>
+                <a href="{p['url']}" target="_blank" style="color:#0f0;margin-right:15px">Visit</a>
+                {star_btn}
+            </div>"""
+
+    return h
+
+def page_public_stats():
+    """Public stats page - no login required"""
+    try:
+        with open("stats.json") as f:
+            stats = json.load(f)
+    except:
+        stats = {"mrr_dollars": 0, "customers": 0, "searches_today": 0, "projects_tracked": 0}
+
+    return f"""
+    <h2>Live Stats</h2>
+    <p style="color:#888;margin-bottom:20px">Open startup transparency. Updated hourly.</p>
+
+    <div class="stats">
+        <div class="stat"><b>${stats.get('mrr_dollars', 0)}</b><span>MRR</span></div>
+        <div class="stat"><b>{stats.get('customers', 0)}</b><span>Paying Members</span></div>
+        <div class="stat"><b>{stats.get('searches_today', 0)}</b><span>Searches Today</span></div>
+    </div>
+
+    <div class="stats">
+        <div class="stat"><b>{stats.get('registrations_total', 0)}</b><span>Content Registered</span></div>
+        <div class="stat"><b>{stats.get('projects_tracked', 0)}</b><span>Projects Tracked</span></div>
+    </div>
+
+    <p style="margin-top:30px;color:#666;font-size:13px">
+        Want to contribute? <a href="/" style="color:#0f0">Join for $1/month</a>
+    </p>
+    """
+
 def page_home(user):
     if user:
         s, c = len(get_saved(user['id'])), len(get_content(user['id']))
@@ -469,8 +644,15 @@ def page_home(user):
             <button>Search</button>
         </form>
         """
-    return """
-    <h2>Sign Up</h2>
+    stripe_btn = '<div class="card" style="text-align:center;background:#001100;border-color:#0f0"><p style="margin-bottom:15px;font-size:24px;color:#0f0">$1<span style="font-size:14px;color:#666">/month</span></p><a href="/checkout" style="background:#0f0;color:#000;padding:12px 30px;text-decoration:none;font-weight:bold;display:inline-block">GET ACCESS</a></div>' if STRIPE_KEY and STRIPE_PRICE_ID else ''
+
+    return f"""
+    <h2>Death2Data</h2>
+    <p style="color:#888;margin-bottom:20px">Search privately. Save what matters. Own your data.</p>
+
+    {stripe_btn}
+
+    <h2 style="margin-top:30px">Free Sign Up</h2>
     <form class="box" method="POST" action="/signup">
         <input type="email" name="email" placeholder="Email" required>
         <button>Sign Up Free</button>
@@ -617,7 +799,31 @@ class H(BaseHTTPRequestHandler):
         if path == "/login": return self.send(html("Login", '<h2>Login</h2><form class="box" method="POST" action="/login"><input name="token" placeholder="Token" required><button>Login</button></form>'))
         if path == "/logout": return self.redir("/", "token=; Path=/; Max-Age=0")
         if path == "/changelog": return self.send(html("Changelog", page_changelog(), user))
+        if path == "/stats": return self.send(html("Stats", page_public_stats(), user))
         if path.startswith("/verify/"): return self.send(html("Verify", page_verify(path.split("/")[-1]), user))
+
+        # Stripe checkout
+        if path == "/checkout":
+            url, error = create_checkout_session()
+            if error:
+                return self.send(html("Error", f'<div class="empty" style="color:#f66">{error}</div><a href="/" style="color:#0f0">Back</a>', user))
+            return self.redir(url)
+
+        # Stripe success
+        if path == "/success":
+            session_id = params.get("session_id", [None])[0]
+            if not session_id:
+                return self.redir("/")
+
+            session = get_checkout_session(session_id)
+            if not session:
+                return self.send(html("Error", '<div class="empty" style="color:#f66">Invalid session</div><a href="/" style="color:#0f0">Back</a>', user))
+
+            email = session.get("customer_details", {}).get("email")
+            customer_id = session.get("customer")
+            token, _ = signup(email, customer_id)
+
+            return self.send(html("Success", f'<h2>You\'re In!</h2><p>Save this token:</p><pre style="color:#0f0;background:#000;padding:15px;font-family:monospace">{token}</pre><p><a href="/" style="color:#0f0">Continue</a></p>'), headers={"Set-Cookie": f"token={token}; Path=/; HttpOnly"})
 
         if not user: return self.redir("/")
 
@@ -627,6 +833,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(html("Search", page_search(user, q, results), user))
         if path == "/saved": return self.send(html("Saved", page_saved(user), user))
         if path == "/content": return self.send(html("Content", page_content(user), user))
+        if path == "/discover": return self.send(html("Discover", page_discover(user), user))
         if path == "/analytics": return self.send(html("Analytics", page_analytics(user), user))
         if path == "/export":
             f = params.get("f",[None])[0]
@@ -668,6 +875,12 @@ class H(BaseHTTPRequestHandler):
                 return self.send(html("Error", f'<p style="color:#f66">{err}</p><a href="/content">Back</a>', user))
             return self.redir(f"/verify/{uid}")
 
+        if self.path == "/star":
+            project_id = data.get("project_id", [""])[0]
+            if project_id:
+                star_project(user['id'], int(project_id))
+            return self.redir("/discover")
+
         if self.path == "/delete":
             delete_all(user['id'])
             return self.redir("/", "token=; Path=/; Max-Age=0")
@@ -687,6 +900,22 @@ if __name__ == "__main__":
     add_version("v1.0.0", "Auth, Search, Save, Content Registry, Export", "Privacy-first search with ownership tracking")
     add_version("v1.1.0", "Added CSV export, improved UI", "Save 5-10 min/week with faster exports")
     add_version("v1.2.0", "Usage tracking, tier limits, changelog, A/B testing", "Track value delivered: X searches, Y saves per day. Data-driven pricing.")
+    add_version("v1.3.0", "Stripe payment integration + Golden Ticket discovery", "One-click payment → instant access. Members get 1000 searches/day. Discover projects early.")
+
+    # Add seed projects
+    conn = db()
+    if conn.execute("SELECT COUNT(*) as c FROM projects").fetchone()['c'] == 0:
+        projects = [
+            ("Death2Data", "https://github.com/deathtodata/death2data", "Privacy-first search engine with content ownership tracking", "search", 85),
+            ("Fortune 0", "https://fortune0.com", "Contribution tracking and equity distribution for open source", "tools", 75),
+            ("Ollama", "https://ollama.com", "Run LLMs locally with zero cloud dependency", "ai", 95),
+            ("SearXNG", "https://github.com/searxng/searxng", "Privacy-respecting metasearch engine", "search", 90),
+        ]
+        for name, url, desc, cat, score in projects:
+            conn.execute("INSERT INTO projects (name, url, description, category, score) VALUES (?, ?, ?, ?, ?)",
+                        (name, url, desc, cat, score))
+        conn.commit()
+    conn.close()
 
     print(f"""
 ╔═════════════════════════════════════════════╗
