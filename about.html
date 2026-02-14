@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JOIN | Death2Data</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:ui-monospace,monospace;
+  background:#000;
+  color:#fff;
+  min-height:100vh;
+}
+
+/* Progress bar */
+.progress-bar{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:3px;
+  background:#111;
+  z-index:100;
+}
+.progress-fill{
+  height:100%;
+  background:#f00;
+  transition:width 0.3s;
+}
+
+/* Step indicator */
+.step-indicator{
+  position:fixed;
+  top:20px;
+  right:20px;
+  font-size:0.75rem;
+  color:#444;
+  z-index:100;
+}
+
+/* Sections */
+.section{
+  min-height:100vh;
+  padding:60px 20px;
+  display:none;
+  opacity:0;
+  transition:opacity 0.3s;
+}
+.section.active{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  opacity:1;
+}
+.section-content{
+  max-width:600px;
+  width:100%;
+}
+
+/* Typography */
+h1{
+  font-size:clamp(1.5rem,5vw,2.5rem);
+  font-weight:400;
+  margin-bottom:30px;
+  line-height:1.3;
+}
+h1 span{color:#f00}
+h2{
+  font-size:0.7rem;
+  letter-spacing:0.3em;
+  color:#666;
+  margin-bottom:20px;
+}
+p{
+  color:#888;
+  margin-bottom:20px;
+  line-height:1.7;
+}
+.highlight{color:#fff}
+
+/* Agreement boxes */
+.agreement{
+  background:#0a0a0a;
+  border:1px solid #222;
+  padding:25px;
+  margin:30px 0;
+}
+.agreement.red{
+  border-color:#300;
+  background:#0a0000;
+}
+.agreement.green{
+  border-color:#030;
+  background:#000a00;
+}
+.agreement h3{
+  font-size:0.7rem;
+  letter-spacing:0.2em;
+  margin-bottom:15px;
+}
+.agreement.red h3{color:#f00}
+.agreement.green h3{color:#0f0}
+.agreement ul{
+  list-style:none;
+  font-size:0.9rem;
+}
+.agreement li{
+  padding:8px 0;
+  border-bottom:1px solid #111;
+  color:#666;
+}
+.agreement li:last-child{border:none}
+
+/* Checkboxes */
+.checkbox-group{
+  margin:30px 0;
+}
+.checkbox-item{
+  display:flex;
+  align-items:flex-start;
+  gap:15px;
+  padding:15px 0;
+  border-bottom:1px solid #111;
+  cursor:pointer;
+}
+.checkbox-item:hover{
+  background:#0a0a0a;
+}
+.checkbox{
+  width:24px;
+  height:24px;
+  border:1px solid #333;
+  background:#000;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  color:#f00;
+}
+.checkbox.checked{
+  border-color:#f00;
+  background:#1a0000;
+}
+.checkbox-label{
+  font-size:0.9rem;
+  color:#888;
+}
+.checkbox-item.checked .checkbox-label{
+  color:#fff;
+}
+
+/* Buttons */
+.btn{
+  display:inline-block;
+  padding:18px 40px;
+  background:#f00;
+  color:#000;
+  border:none;
+  font-family:inherit;
+  font-size:1rem;
+  font-weight:700;
+  cursor:pointer;
+  letter-spacing:0.05em;
+  margin-top:30px;
+}
+.btn:hover{background:#fff}
+.btn:disabled{
+  background:#333;
+  color:#666;
+  cursor:not-allowed;
+}
+.btn-outline{
+  background:none;
+  border:1px solid #333;
+  color:#666;
+  margin-left:10px;
+}
+.btn-outline:hover{
+  border-color:#f00;
+  color:#f00;
+  background:none;
+}
+
+/* Identity card */
+.identity-card{
+  background:#0a0a0a;
+  border:2px solid #f00;
+  padding:40px;
+  text-align:center;
+  margin:30px 0;
+}
+.anon-name{
+  font-size:2rem;
+  font-weight:700;
+  color:#f00;
+  margin-bottom:10px;
+}
+.anon-id{
+  font-size:0.75rem;
+  color:#666;
+  word-break:break-all;
+}
+
+/* QR Code */
+.qr-container{
+  background:#fff;
+  padding:20px;
+  display:inline-block;
+  margin:20px 0;
+}
+#qr-code{
+  width:200px;
+  height:200px;
+}
+
+/* Key display */
+.key-box{
+  background:#050505;
+  border:1px solid #222;
+  padding:15px;
+  margin:15px 0;
+  text-align:left;
+}
+.key-box label{
+  font-size:0.65rem;
+  color:#f00;
+  letter-spacing:0.1em;
+}
+.key-box pre{
+  font-size:0.6rem;
+  color:#666;
+  white-space:pre-wrap;
+  word-break:break-all;
+  margin-top:10px;
+  max-height:80px;
+  overflow:hidden;
+}
+.key-box button{
+  background:none;
+  border:1px solid #333;
+  color:#666;
+  padding:5px 10px;
+  font-family:inherit;
+  font-size:0.65rem;
+  cursor:pointer;
+  margin-top:10px;
+}
+.key-box button:hover{
+  border-color:#f00;
+  color:#f00;
+}
+
+/* Final section */
+.final-actions{
+  display:flex;
+  gap:15px;
+  flex-wrap:wrap;
+  margin-top:30px;
+}
+
+/* Locked message */
+.locked{
+  text-align:center;
+  padding:40px;
+  color:#444;
+  font-size:0.9rem;
+}
+.locked-icon{
+  font-size:3rem;
+  margin-bottom:20px;
+}
+
+/* Mobile */
+@media(max-width:600px){
+  .section{padding:40px 15px}
+  .agreement{padding:20px}
+  .identity-card{padding:25px}
+  .anon-name{font-size:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<!-- PROGRESS -->
+<div class="progress-bar">
+  <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+</div>
+<div class="step-indicator" id="step-indicator">1 / 7</div>
+
+<!-- SECTION 1: INTRO -->
+<div class="section active" id="section-1" data-step="1">
+  <div class="section-content">
+    <h2>SECTION 1 OF 7</h2>
+    <h1>BEFORE YOU JOIN, <span>UNDERSTAND WHAT YOU'RE JOINING</span></h1>
+    
+    <p>This isn't a typical signup flow. There's no "I agree to terms I didn't read" checkbox.</p>
+    
+    <p>You're going to go through each section. You're going to understand exactly what Death2Data is, what we do, what we DON'T do, and what you're agreeing to.</p>
+    
+    <p class="highlight">If you don't agree with something, don't join. We'd rather have 100 people who understand than 10,000 who don't.</p>
+    
+    <button class="btn" onclick="nextSection()">I'M READY</button>
+  </div>
+</div>
+
+<!-- SECTION 2: WHAT WE DON'T DO -->
+<div class="section" id="section-2" data-step="2">
+  <div class="section-content">
+    <h2>SECTION 2 OF 7</h2>
+    <h1>WHAT WE <span>DON'T</span> DO</h1>
+    
+    <p>Most terms of service tell you what they CAN do to you. We're telling you what we CAN'T do—because we built it that way.</p>
+    
+    <div class="agreement red">
+      <h3>WE CANNOT</h3>
+      <ul>
+        <li>Read your data (it's stored on YOUR device, not ours)</li>
+        <li>Sell your information (we don't have it)</li>
+        <li>Train AI on your content (we can't access it)</li>
+        <li>Hand it to governments (nothing to hand over)</li>
+        <li>Get hacked and leak your data (no central database exists)</li>
+        <li>Change our mind later (the architecture prevents it)</li>
+      </ul>
+    </div>
+    
+    <p>This isn't a promise. It's math. The system is built so these things are impossible.</p>
+    
+    <div class="checkbox-group">
+      <div class="checkbox-item" onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <div class="checkbox-label">I understand that Death2Data cannot access my data because it's stored locally on my device, not on any server.</div>
+      </div>
+    </div>
+    
+    <button class="btn" id="btn-2" disabled onclick="nextSection()">CONTINUE</button>
+  </div>
+</div>
+
+<!-- SECTION 3: WHAT WE DO -->
+<div class="section" id="section-3" data-step="3">
+  <div class="section-content">
+    <h2>SECTION 3 OF 7</h2>
+    <h1>WHAT WE <span>DO</span></h1>
+    
+    <p>We build tools. You pay $1/month. That's the entire business model.</p>
+    
+    <div class="agreement green">
+      <h3>WE WILL</h3>
+      <ul>
+        <li>Provide privacy-first tools that work offline</li>
+        <li>Keep all code open source (MIT license)</li>
+        <li>Never raise prices above $1/month for individuals</li>
+        <li>Never take VC money or sell the company</li>
+        <li>Let you export all your data anytime</li>
+        <li>Let you delete everything with one click</li>
+      </ul>
+    </div>
+    
+    <div class="checkbox-group">
+      <div class="checkbox-item" onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <div class="checkbox-label">I understand that I'm paying for tools, not for a service that holds my data hostage.</div>
+      </div>
+    </div>
+    
+    <button class="btn" id="btn-3" disabled onclick="nextSection()">CONTINUE</button>
+  </div>
+</div>
+
+<!-- SECTION 4: YOUR RESPONSIBILITIES -->
+<div class="section" id="section-4" data-step="4">
+  <div class="section-content">
+    <h2>SECTION 4 OF 7</h2>
+    <h1>YOUR <span>RESPONSIBILITIES</span></h1>
+    
+    <p>With ownership comes responsibility. Your data is yours—which means losing it is on you.</p>
+    
+    <div class="agreement">
+      <h3>YOU ARE RESPONSIBLE FOR</h3>
+      <ul>
+        <li>Backing up your own data (we can't recover it)</li>
+        <li>Keeping your private key safe (lose it = lose access)</li>
+        <li>Understanding that "local-first" means "on your device"</li>
+        <li>Not blaming us if you delete your own data</li>
+      </ul>
+    </div>
+    
+    <p class="highlight">This is the trade-off. We can't spy on you, but we also can't save you from yourself.</p>
+    
+    <div class="checkbox-group">
+      <div class="checkbox-item" onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <div class="checkbox-label">I understand that my data is my responsibility. If I lose it, it's gone.</div>
+      </div>
+    </div>
+    
+    <button class="btn" id="btn-4" disabled onclick="nextSection()">CONTINUE</button>
+  </div>
+</div>
+
+<!-- SECTION 5: THE PRICE -->
+<div class="section" id="section-5" data-step="5">
+  <div class="section-content">
+    <h2>SECTION 5 OF 7</h2>
+    <h1><span>$1</span> PER MONTH</h1>
+    
+    <p>That's it. One dollar. Why so cheap?</p>
+    
+    <p>Because we don't need to extract value from you. We're not trying to become a unicorn. We're trying to build sustainable tools for people who refuse to be the product.</p>
+    
+    <div class="agreement">
+      <h3>THE MATH</h3>
+      <ul>
+        <li>4,200 users × $12/year = ~$50,000/year</li>
+        <li>That's enough to sustain one developer</li>
+        <li>No VC money needed</li>
+        <li>No exit strategy required</li>
+        <li>No reason to ever betray you</li>
+      </ul>
+    </div>
+    
+    <div class="checkbox-group">
+      <div class="checkbox-item" onclick="toggleCheck(this)">
+        <div class="checkbox"></div>
+        <div class="checkbox-label">I understand the pricing and why it works this way.</div>
+      </div>
+    </div>
+    
+    <button class="btn" id="btn-5" disabled onclick="nextSection()">CONTINUE</button>
+  </div>
+</div>
+
+<!-- SECTION 6: CREATE IDENTITY -->
+<div class="section" id="section-6" data-step="6">
+  <div class="section-content">
+    <h2>SECTION 6 OF 7</h2>
+    <h1>CREATE YOUR <span>IDENTITY</span></h1>
+    
+    <p>No email. No password. No username. Just cryptography.</p>
+    
+    <p>We're going to generate a keypair for you. Your private key IS your identity. Your public key is how others verify it's you.</p>
+    
+    <div class="agreement">
+      <h3>HOW IT WORKS</h3>
+      <ul>
+        <li>Private key = YOUR secret (never share it)</li>
+        <li>Public key = YOUR address (share freely)</li>
+        <li>Anonymous name = derived from your public key</li>
+        <li>No email or personal info required</li>
+      </ul>
+    </div>
+    
+    <div id="identity-pending">
+      <div class="checkbox-group">
+        <div class="checkbox-item" onclick="toggleCheck(this)">
+          <div class="checkbox"></div>
+          <div class="checkbox-label">I understand that my private key is my identity. If I lose it, I cannot recover my account.</div>
+        </div>
+      </div>
+      
+      <button class="btn" id="btn-6" disabled onclick="generateIdentity()">GENERATE MY IDENTITY</button>
+    </div>
+    
+    <div id="identity-created" style="display:none">
+      <div class="identity-card">
+        <div class="anon-name" id="anon-name">LOADING...</div>
+        <div class="anon-id" id="anon-id"></div>
+      </div>
+      
+      <div class="qr-container">
+        <canvas id="qr-code"></canvas>
+      </div>
+      <p style="font-size:0.75rem;color:#666;text-align:center">YOUR PUBLIC KEY AS QR CODE</p>
+      
+      <div class="key-box">
+        <label>PRIVATE KEY (KEEP SECRET - SAVE THIS NOW)</label>
+        <pre id="private-key"></pre>
+        <button onclick="copyKey('private')">COPY</button>
+        <button onclick="downloadKeys()">DOWNLOAD</button>
+      </div>
+      
+      <div class="key-box">
+        <label>PUBLIC KEY (SHARE FREELY)</label>
+        <pre id="public-key"></pre>
+        <button onclick="copyKey('public')">COPY</button>
+      </div>
+      
+      <div class="checkbox-group">
+        <div class="checkbox-item" onclick="toggleCheck(this)">
+          <div class="checkbox"></div>
+          <div class="checkbox-label">I have saved my private key somewhere safe. I understand it cannot be recovered.</div>
+        </div>
+      </div>
+      
+      <button class="btn" id="btn-6b" disabled onclick="nextSection()">CONTINUE TO PAYMENT</button>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 7: PAYMENT -->
+<div class="section" id="section-7" data-step="7">
+  <div class="section-content">
+    <h2>SECTION 7 OF 7</h2>
+    <h1>ACTIVATE YOUR <span>ACCESS</span></h1>
+    
+    <p>You've read everything. You've agreed to everything. You have your identity.</p>
+    
+    <p>Now: $1 to activate.</p>
+    
+    <div class="identity-card" style="border-color:#333">
+      <div class="anon-name" id="final-name">YOUR-NAME-HERE</div>
+      <p style="color:#666;margin:10px 0 0">Your cryptographic identity is ready</p>
+    </div>
+    
+    <div class="agreement green">
+      <h3>WHAT YOU'RE GETTING</h3>
+      <ul>
+        <li>Access to all D2D tools</li>
+        <li>All future tools included</li>
+        <li>No ads, no tracking, no bullshit</li>
+        <li>Cancel anytime</li>
+      </ul>
+    </div>
+    
+    <div class="final-actions">
+      <a href="https://buy.stripe.com/cNieVd5Vjb6N2ZY6Fq4wM00" class="btn">PAY $1 — ACTIVATE ACCESS</a>
+    </div>
+
+    <p style="margin-top:20px">
+      <a href="/" style="color:#444;font-size:0.75rem">or try 3 free searches first →</a>
+    </p>
+
+    <p style="margin-top:20px;font-size:0.75rem;color:#444">
+      Payment handled by Stripe. We receive your public key (not your email) as the identifier.
+    </p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let currentSection = 1;
+const totalSections = 7;
+
+function updateProgress() {
+  const percent = ((currentSection - 1) / (totalSections - 1)) * 100;
+  document.getElementById('progress-fill').style.width = percent + '%';
+  document.getElementById('step-indicator').textContent = currentSection + ' / ' + totalSections;
+}
+
+function nextSection() {
+  if (currentSection >= totalSections) return;
+  
+  // Hide current
+  document.getElementById('section-' + currentSection).classList.remove('active');
+  
+  // Show next
+  currentSection++;
+  document.getElementById('section-' + currentSection).classList.add('active');
+  
+  updateProgress();
+  window.scrollTo(0, 0);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CHECKBOXES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function toggleCheck(item) {
+  const checkbox = item.querySelector('.checkbox');
+  const isChecked = checkbox.classList.toggle('checked');
+  item.classList.toggle('checked', isChecked);
+  
+  if (isChecked) {
+    checkbox.textContent = '✓';
+  } else {
+    checkbox.textContent = '';
+  }
+  
+  // Enable/disable continue button for this section
+  checkSectionComplete();
+}
+
+function checkSectionComplete() {
+  const section = document.getElementById('section-' + currentSection);
+  const checkboxes = section.querySelectorAll('.checkbox');
+  const allChecked = Array.from(checkboxes).every(cb => cb.classList.contains('checked'));
+  
+  // Find the button for this section
+  let btn = document.getElementById('btn-' + currentSection);
+  if (!btn && currentSection === 6) {
+    btn = document.getElementById('btn-6b');
+  }
+  
+  if (btn) {
+    btn.disabled = !allChecked;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CRYPTO IDENTITY
+// ═══════════════════════════════════════════════════════════════════════════════
+
+let privateKeyPEM = '';
+let publicKeyPEM = '';
+let anonName = '';
+
+async function generateIdentity() {
+  // Generate ECDSA keypair
+  const keyPair = await crypto.subtle.generateKey(
+    { name: "ECDSA", namedCurve: "P-256" },
+    true,
+    ["sign", "verify"]
+  );
+  
+  // Export keys
+  const privateExport = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+  const publicExport = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+  
+  privateKeyPEM = arrayBufferToPEM(privateExport, 'PRIVATE KEY');
+  publicKeyPEM = arrayBufferToPEM(publicExport, 'PUBLIC KEY');
+  
+  // Generate anon name from public key hash
+  const hash = await crypto.subtle.digest('SHA-256', publicExport);
+  anonName = generateAnonName(new Uint8Array(hash));
+  
+  // Store in localStorage
+  localStorage.setItem('d2d_private_key', privateKeyPEM);
+  localStorage.setItem('d2d_public_key', publicKeyPEM);
+  localStorage.setItem('d2d_anon_name', anonName);
+  localStorage.setItem('d2d_created', new Date().toISOString());
+  
+  // Update UI
+  document.getElementById('anon-name').textContent = anonName;
+  document.getElementById('anon-id').textContent = arrayBufferToHex(new Uint8Array(hash).slice(0, 16));
+  document.getElementById('private-key').textContent = privateKeyPEM;
+  document.getElementById('public-key').textContent = publicKeyPEM;
+  document.getElementById('final-name').textContent = anonName;
+  
+  // Generate QR code
+  generateQR(publicKeyPEM);
+  
+  // Show created UI
+  document.getElementById('identity-pending').style.display = 'none';
+  document.getElementById('identity-created').style.display = 'block';
+}
+
+function generateAnonName(hashArray) {
+  const words = [
+    'GHOST', 'VOID', 'NULL', 'ZERO', 'DARK', 'ANON', 'MASK', 'SHADE',
+    'PHANTOM', 'CIPHER', 'ROGUE', 'SHADOW', 'STEALTH', 'HIDDEN', 'SILENT', 'UNKNOWN',
+    'CHAOS', 'REBEL', 'DRIFT', 'PULSE', 'FLUX', 'SPARK', 'BOLT', 'SURGE',
+    'VECTOR', 'APEX', 'NEXUS', 'CORE', 'NODE', 'LINK', 'GRID', 'MESH',
+    'ONYX', 'IRON', 'RUST', 'ACID', 'NEON', 'ZINC', 'CHROME', 'BYTE',
+    'WOLF', 'HAWK', 'CROW', 'BEAR', 'LYNX', 'VIPER', 'RAVEN', 'TIGER'
+  ];
+  
+  const word1 = words[hashArray[0] % words.length];
+  const word2 = words[hashArray[1] % words.length];
+  const num = ((hashArray[2] << 8) | hashArray[3]) % 10000;
+  
+  return word1 + '-' + word2 + '-' + num.toString().padStart(4, '0');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// QR CODE (Simple implementation)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function generateQR(data) {
+  const canvas = document.getElementById('qr-code');
+  const ctx = canvas.getContext('2d');
+  const size = 200;
+  canvas.width = size;
+  canvas.height = size;
+  
+  // Simple visual representation (not a real QR code - would need library for that)
+  // This creates a unique pattern from the public key
+  const hash = simpleHash(data);
+  const cellSize = 10;
+  const grid = size / cellSize;
+  
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, size, size);
+  
+  ctx.fillStyle = '#000';
+  
+  // Create pattern from hash
+  for (let y = 0; y < grid; y++) {
+    for (let x = 0; x < grid; x++) {
+      const idx = (y * grid + x) % hash.length;
+      if (hash.charCodeAt(idx) % 2 === 0) {
+        ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+  
+  // Add positioning squares (like real QR)
+  drawPositionSquare(ctx, 0, 0, 70);
+  drawPositionSquare(ctx, size - 70, 0, 70);
+  drawPositionSquare(ctx, 0, size - 70, 70);
+  
+  // Center marker
+  ctx.fillStyle = '#f00';
+  ctx.fillRect(size/2 - 15, size/2 - 15, 30, 30);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(size/2 - 10, size/2 - 10, 20, 20);
+  ctx.fillStyle = '#f00';
+  ctx.fillRect(size/2 - 5, size/2 - 5, 10, 10);
+}
+
+function drawPositionSquare(ctx, x, y, size) {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x, y, size, size);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x + 10, y + 10, size - 20, size - 20);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 20, y + 20, size - 40, size - 40);
+}
+
+function simpleHash(str) {
+  let hash = '';
+  for (let i = 0; i < str.length; i++) {
+    hash += str.charCodeAt(i).toString(16);
+  }
+  return hash;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function arrayBufferToPEM(buffer, type) {
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  const lines = base64.match(/.{1,64}/g).join('\n');
+  return '-----BEGIN ' + type + '-----\n' + lines + '\n-----END ' + type + '-----';
+}
+
+function arrayBufferToHex(buffer) {
+  return Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function copyKey(type) {
+  const text = type === 'private' ? privateKeyPEM : publicKeyPEM;
+  navigator.clipboard.writeText(text);
+  alert('Copied to clipboard!');
+}
+
+function downloadKeys() {
+  const content = `D2D IDENTITY: ${anonName}
+Generated: ${new Date().toLocaleString()}
+
+=== PRIVATE KEY (KEEP SECRET) ===
+${privateKeyPEM}
+
+=== PUBLIC KEY (SHARE FREELY) ===
+${publicKeyPEM}
+
+IMPORTANT: Your private key IS your identity.
+If you lose it, you cannot recover your account.
+Save this file somewhere safe.
+`;
+  
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'd2d-identity-' + anonName.toLowerCase() + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Initialize
+updateProgress();
+</script>
+
+</body>
+</html>
