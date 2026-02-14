@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>death2data — private search</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:ui-monospace,'SF Mono','Menlo','Consolas',monospace;
+  background:#000;
+  color:#888;
+  font-size:14px;
+  line-height:1.6;
+  min-height:100vh;
+}
+::selection{background:rgba(0,255,0,0.15)}
+a{color:#0f0;text-decoration:none}
+a:hover{opacity:0.8}
+
+/* Search layout */
+.wrap{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:20px;transition:all 0.3s;
+}
+.wrap.has-results{justify-content:flex-start;padding-top:40px;min-height:auto;}
+
+.logo{font-size:24px;font-weight:700;color:#fff;letter-spacing:-1px;margin-bottom:4px;transition:all 0.3s;}
+.logo span{color:#f00}
+.wrap.has-results .logo{font-size:16px}
+.tagline{font-size:11px;color:#444;margin-bottom:28px;transition:all 0.3s;letter-spacing:0.1em}
+.wrap.has-results .tagline{font-size:10px;margin-bottom:14px}
+
+/* Search bar */
+.search-box{display:flex;gap:0;max-width:600px;width:100%;margin-bottom:12px;}
+.search-input{
+  flex:1;padding:14px 16px;
+  background:#0a0a0a;border:1px solid #222;border-right:none;
+  color:#fff;font-family:inherit;font-size:14px;outline:none;
+}
+.search-input:focus{border-color:#333}
+.search-input::placeholder{color:#333}
+.search-btn{
+  padding:14px 20px;background:#0a0a0a;border:1px solid #222;
+  color:#0f0;font-family:inherit;font-weight:700;cursor:pointer;font-size:13px;
+}
+.search-btn:hover{background:#111;border-color:#0f0}
+
+.counter{font-size:11px;color:#333;margin-bottom:20px;transition:all 0.3s}
+.counter.active{color:#0f0}
+
+/* Results */
+.results{max-width:600px;width:100%;padding-bottom:60px;}
+.result{
+  padding:16px 0;border-bottom:1px solid #111;cursor:pointer;
+}
+.result:hover{background:#050505;margin:0 -8px;padding:16px 8px}
+.result-url{font-size:11px;color:#333;margin-bottom:4px;word-break:break-all}
+.result-title{color:#0f0;font-size:14px;margin-bottom:6px}
+.result-snippet{color:#666;font-size:12px;line-height:1.5}
+.result-snippet mark{background:none;color:#fff}
+.result.locked{opacity:0.3;cursor:default}
+.result.locked .result-title::after{content:" [locked]";color:#f00;font-size:11px}
+.result-engine{font-size:10px;color:#222;margin-top:4px}
+
+.searching{text-align:center;color:#333;padding:40px 0}
+
+/* Auth bar */
+.auth{
+  position:fixed;bottom:0;left:0;right:0;
+  background:#0a0a0a;border-top:1px solid #111;
+  padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:10px;
+  font-size:12px;
+}
+.auth input{
+  padding:8px 12px;background:#000;border:1px solid #222;
+  color:#fff;font-family:inherit;font-size:12px;outline:none;width:200px;
+}
+.auth input:focus{border-color:#0f0}
+.auth button{
+  padding:8px 16px;background:#111;border:1px solid #222;
+  color:#0f0;font-family:inherit;font-size:12px;cursor:pointer;
+}
+.auth button:hover{border-color:#0f0}
+.auth .user{color:#0f0}
+.auth .dot{display:inline-block;width:6px;height:6px;background:#0f0;border-radius:50%;margin-right:6px}
+
+/* Gate overlay */
+.gate{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,0.95);display:none;
+  align-items:center;justify-content:center;padding:20px;z-index:100;
+}
+.gate.show{display:flex}
+.gate-box{
+  max-width:400px;text-align:center;
+  border:1px solid #222;padding:40px;background:#0a0a0a;
+}
+.gate-box h2{color:#fff;font-size:1rem;margin-bottom:16px;font-weight:400}
+.gate-box p{font-size:12px;margin-bottom:20px}
+.gate-box .btn{
+  display:inline-block;padding:14px 32px;background:#f00;color:#000;
+  font-weight:700;text-decoration:none;font-family:inherit;font-size:12px;
+  letter-spacing:0.1em;
+}
+.gate-box .btn:hover{background:#fff}
+.gate-box .dismiss{
+  display:block;margin-top:16px;font-size:11px;color:#333;cursor:pointer;
+}
+.gate-box .dismiss:hover{color:#666}
+
+/* Footer link */
+.footer{
+  position:fixed;bottom:50px;left:0;right:0;text-align:center;
+  font-size:10px;color:#222;
+}
+.wrap.has-results ~ .footer{position:static;padding:20px 0}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <div class="logo">death<span>2</span>data</div>
+  <div class="tagline">SEARCH WITHOUT SURVEILLANCE</div>
+
+  <div class="search-box">
+    <input type="text" class="search-input" id="q" placeholder="search anything..." autocomplete="off"
+           onkeydown="if(event.key==='Enter')doSearch()">
+    <button class="search-btn" onclick="doSearch()">SEARCH</button>
+  </div>
+
+  <div class="counter" id="counter">3 free searches</div>
+  <div class="results" id="results"></div>
+</div>
+
+<div class="gate" id="gate">
+  <div class="gate-box">
+    <h2>FREE SEARCHES USED</h2>
+    <p>Unlimited search costs $1. No tracking. No ads. Just results.</p>
+    <a href="" class="btn" id="gate-link">ACTIVATE — $1</a>
+    <span class="dismiss" onclick="dismissGate()">not now</span>
+  </div>
+</div>
+
+<div class="auth" id="auth">
+  <input type="email" id="email" placeholder="email to sign in" onkeydown="if(event.key==='Enter')login()">
+  <button onclick="login()">sign in</button>
+</div>
+
+<div class="footer">
+  <a href="/">death2data</a> · <a href="https://fortune0.com">fortune0 network</a>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const S = {
+  token: null,
+  email: null,
+  tier: null,
+  searches: 0,
+  maxFree: 3,
+};
+
+// Fortune0 backend — serves the search API
+const API = location.hostname === 'localhost'
+  ? ''
+  : 'https://fortune0-com.onrender.com';
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+(function init() {
+  // Restore session
+  const t = sessionStorage.getItem('d2d_token');
+  const e = sessionStorage.getItem('d2d_email');
+  if (t && e) {
+    S.token = t;
+    S.email = e;
+    S.maxFree = Infinity;
+    showAuthed();
+  }
+  updateCounter();
+  document.getElementById('q').focus();
+})();
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+async function login() {
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  if (!email || !email.includes('@')) return;
+  try {
+    const r = await fetch(API + '/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, source_domain: 'death2data.com' }),
+    });
+    const d = await r.json();
+    if (d.token) {
+      S.token = d.token;
+      S.email = d.email;
+      S.tier = d.tier;
+      S.maxFree = Infinity;
+      sessionStorage.setItem('d2d_token', d.token);
+      sessionStorage.setItem('d2d_email', d.email);
+      showAuthed();
+      document.getElementById('gate').classList.remove('show');
+      updateCounter();
+    }
+  } catch (e) {
+    // Offline — let them search locally
+    S.maxFree = Infinity;
+    updateCounter();
+  }
+}
+
+function showAuthed() {
+  const el = document.getElementById('auth');
+  el.innerHTML = `
+    <span class="user"><span class="dot"></span>${S.email}</span>
+    <button onclick="logout()">sign out</button>
+  `;
+}
+
+function logout() {
+  S.token = null;
+  S.email = null;
+  S.tier = null;
+  S.maxFree = 3;
+  S.searches = 0;
+  sessionStorage.removeItem('d2d_token');
+  sessionStorage.removeItem('d2d_email');
+  document.getElementById('auth').innerHTML = `
+    <input type="email" id="email" placeholder="email to sign in" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">sign in</button>
+  `;
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('wrap').classList.remove('has-results');
+  updateCounter();
+}
+
+// ═══════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════
+async function doSearch() {
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+
+  if (S.searches >= S.maxFree && !S.token) {
+    showGate();
+    return;
+  }
+
+  S.searches++;
+  updateCounter();
+  document.getElementById('wrap').classList.add('has-results');
+  document.getElementById('results').innerHTML = '<div class="searching">searching...</div>';
+
+  let results;
+  try {
+    const headers = {};
+    if (S.token) headers['Authorization'] = 'Bearer ' + S.token;
+    const r = await fetch(API + '/api/search?q=' + encodeURIComponent(q), { headers });
+    const d = await r.json();
+
+    if (d.results && d.results.length > 0) {
+      results = d.results;
+    } else if (d.error === 'auth_required' || d.error === 'activation_required') {
+      // Need to sign in or activate
+      results = localResults(q);
+      if (d.error === 'activation_required') {
+        setTimeout(() => showGate(), 400);
+      }
+    } else {
+      results = localResults(q);
+    }
+  } catch (e) {
+    // API down — local fallback
+    results = localResults(q);
+  }
+
+  renderResults(results, q);
+
+  if (S.searches >= S.maxFree && !S.token) {
+    setTimeout(() => showGate(), 600);
+  }
+}
+
+function localResults(q) {
+  const s = q.toLowerCase().replace(/\s+/g, '-');
+  return [
+    { title: q + ' — overview', url: 'local://d2d/wiki/' + s, snippet: 'Local result. Sign in for live web search.', engine: 'local' },
+    { title: 'Understanding ' + q, url: 'local://d2d/deep/' + s, snippet: 'No tracking. No ads. Your search stays in your browser.', engine: 'local' },
+    { title: q + ' — resources', url: 'local://d2d/ref/' + s, snippet: 'Connect to fortune0 backend for real results.', engine: 'local' },
+  ];
+}
+
+function renderResults(results, q) {
+  const el = document.getElementById('results');
+  const words = q.toLowerCase().split(/\s+/);
+  el.innerHTML = results.map(r => {
+    let sn = r.snippet || r.content || '';
+    words.forEach(w => {
+      if (w.length > 2) sn = sn.replace(new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>');
+    });
+    const eng = r.engine ? `<div class="result-engine">via ${r.engine}</div>` : '';
+    return `<div class="result" onclick="go('${(r.url || '').replace(/'/g, "\\'")}')">
+      <div class="result-url">${r.url || ''}</div>
+      <div class="result-title">${r.title || ''}</div>
+      <div class="result-snippet">${sn}</div>
+      ${eng}
+    </div>`;
+  }).join('');
+}
+
+function go(url) {
+  if (url && url.startsWith('http')) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
+// ═══════════════════════════════════════════
+// GATE
+// ═══════════════════════════════════════════
+function showGate() {
+  document.getElementById('gate').classList.add('show');
+  // Build activation URL — goes to fortune0 onboard with d2d source
+  const params = ['from=d2d'];
+  const ref = new URLSearchParams(location.search).get('ref');
+  if (ref) params.push('ref=' + ref);
+  document.getElementById('gate-link').href = API + '/onboard?' + params.join('&');
+}
+
+function dismissGate() {
+  document.getElementById('gate').classList.remove('show');
+  S.maxFree = S.searches + 1;
+  updateCounter();
+}
+
+// ═══════════════════════════════════════════
+// COUNTER
+// ═══════════════════════════════════════════
+function updateCounter() {
+  const el = document.getElementById('counter');
+  if (S.token) {
+    el.textContent = 'unlimited searches';
+    el.classList.add('active');
+  } else if (S.searches === 0) {
+    el.textContent = S.maxFree + ' free searches';
+    el.classList.remove('active');
+  } else {
+    const r = Math.max(0, S.maxFree - S.searches);
+    el.textContent = r > 0 ? r + ' free search' + (r === 1 ? '' : 'es') + ' remaining' : 'free searches used';
+    el.classList.remove('active');
+  }
+}
+</script>
+</body>
+</html>
