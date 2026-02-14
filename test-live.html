@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>D2D + F0 — Live System Test</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:ui-monospace,monospace;background:#000;color:#888;padding:20px;font-size:13px;line-height:1.6}
+h1{color:#fff;font-size:16px;margin-bottom:4px}
+.sub{color:#444;font-size:11px;margin-bottom:20px}
+.test{padding:8px 0;border-bottom:1px solid #111;display:flex;gap:12px;align-items:flex-start}
+.status{width:18px;flex-shrink:0;text-align:center;font-size:14px}
+.pass{color:#0f0}
+.fail{color:#f00}
+.wait{color:#444}
+.name{flex:1}
+.detail{color:#444;font-size:11px}
+.section{margin:20px 0 8px;color:#333;font-size:11px;letter-spacing:0.15em;text-transform:uppercase}
+#run{padding:12px 24px;background:#0f0;color:#000;border:none;font-family:inherit;font-weight:700;cursor:pointer;font-size:13px;margin:20px 0}
+#run:hover{background:#fff}
+#run:disabled{background:#222;color:#444;cursor:default}
+.summary{margin-top:20px;padding:16px;border:1px solid #222;background:#0a0a0a}
+.summary.all-pass{border-color:#0f0}
+.summary.has-fail{border-color:#f00}
+pre{background:#0a0a0a;border:1px solid #111;padding:12px;margin:8px 0;overflow-x:auto;font-size:11px;color:#666;max-height:200px;overflow-y:auto}
+</style>
+</head>
+<body>
+
+<h1>D2D + F0 — Live System Test</h1>
+<div class="sub">Tests both death2data.com (GitHub Pages) and fortune0 (Render) in real-time</div>
+
+<button id="run" onclick="runTests()">RUN ALL TESTS</button>
+
+<div id="results"></div>
+<div id="summary"></div>
+<pre id="log" style="display:none"></pre>
+
+<script>
+const F0 = 'https://fortune0-com.onrender.com';
+const D2D = 'https://death2data.com';
+let results = [];
+let logs = [];
+
+function log(msg) {
+  logs.push(`[${new Date().toISOString().slice(11,19)}] ${msg}`);
+  document.getElementById('log').style.display = 'block';
+  document.getElementById('log').textContent = logs.join('\n');
+}
+
+function addResult(section, name, pass, detail) {
+  results.push({ section, name, pass, detail });
+  render();
+}
+
+function render() {
+  const el = document.getElementById('results');
+  let html = '';
+  let lastSection = '';
+  for (const r of results) {
+    if (r.section !== lastSection) {
+      html += `<div class="section">${r.section}</div>`;
+      lastSection = r.section;
+    }
+    const icon = r.pass === null ? '·' : r.pass ? '✓' : '✗';
+    const cls = r.pass === null ? 'wait' : r.pass ? 'pass' : 'fail';
+    html += `<div class="test">
+      <div class="status ${cls}">${icon}</div>
+      <div>
+        <div class="name">${r.name}</div>
+        ${r.detail ? `<div class="detail">${r.detail}</div>` : ''}
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+async function fetchJSON(url, opts = {}) {
+  log(`Fetch: ${opts.method || 'GET'} ${url}`);
+  try {
+    const r = await fetch(url, { ...opts, mode: 'cors' });
+    const text = await r.text();
+    log(`  → ${r.status} (${text.length} bytes)`);
+    try { return { status: r.status, data: JSON.parse(text), ok: r.ok }; }
+    catch { return { status: r.status, data: { raw: text.slice(0, 200) }, ok: r.ok }; }
+  } catch (e) {
+    log(`  → ERROR: ${e.message}`);
+    return { status: 0, data: { error: e.message }, ok: false };
+  }
+}
+
+async function fetchPage(url) {
+  log(`Fetch page: ${url}`);
+  try {
+    const r = await fetch(url, { mode: 'cors' });
+    const text = await r.text();
+    log(`  → ${r.status} (${text.length} bytes)`);
+    return { status: r.status, html: text, ok: r.ok };
+  } catch (e) {
+    log(`  → ERROR: ${e.message}`);
+    return { status: 0, html: '', ok: false };
+  }
+}
+
+async function runTests() {
+  document.getElementById('run').disabled = true;
+  document.getElementById('run').textContent = 'RUNNING...';
+  results = [];
+  logs = [];
+
+  // ═══ FORTUNE0 BACKEND ═══
+  const s = 'Fortune0 Backend (Render)';
+
+  // Health
+  const h = await fetchJSON(F0 + '/health');
+  addResult(s, 'Health endpoint', h.ok, h.ok ? `v${h.data.version || '?'}` : `HTTP ${h.status}: ${h.data.error || h.data.raw || 'unreachable'}`);
+
+  // Domains.json
+  const d = await fetchJSON(F0 + '/domains.json');
+  addResult(s, 'domains.json loads', d.ok && Array.isArray(d.data), d.ok ? `${d.data.length} domains` : `HTTP ${d.status}`);
+
+  // Domain info API
+  const di = await fetchJSON(F0 + '/api/domain-info/civicresume');
+  addResult(s, 'Domain info API', di.ok, di.ok ? `${di.data.domain} (interest: ${di.data.interest_count})` : `${di.data.error || 'failed'}`);
+
+  // Search without auth
+  const sn = await fetchJSON(F0 + '/api/search?q=privacy');
+  addResult(s, 'Search (no auth) → 401', sn.status === 401, `${sn.data.error || 'unexpected'}`);
+
+  // Domain interest (GET)
+  const dig = await fetchJSON(F0 + '/api/domain-interest');
+  addResult(s, 'Domain interest stats', dig.ok, dig.ok ? `${dig.data.length} domains with signups` : 'failed');
+
+  // QR page
+  const qr = await fetchPage(F0 + '/qr/civicresume');
+  addResult(s, 'QR page loads', qr.ok && qr.html.includes('QR Code'), qr.ok ? `${qr.html.length} bytes` : `HTTP ${qr.status}`);
+
+  // Domain landing
+  const dl = await fetchPage(F0 + '/d/civicresume');
+  addResult(s, 'Domain landing page', dl.ok, dl.ok ? `${dl.html.length} bytes` : `HTTP ${dl.status}`);
+
+  // ═══ SIGNUP FLOW ═══
+  const sf = 'Signup Flow (Cross-Site)';
+
+  // Signup from D2D
+  const su = await fetchJSON(F0 + '/api/signup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'live-test@example.com', source_domain: 'death2data.com' }),
+  });
+  addResult(sf, 'Signup from D2D source', su.ok && su.data.token, su.ok ? `tier: ${su.data.tier}, ref: ${su.data.referral_code}` : `${su.data.error || 'failed'}`);
+  const token = su.data?.token;
+
+  // Search with free tier
+  if (token) {
+    const sa = await fetchJSON(F0 + '/api/search?q=privacy', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    addResult(sf, 'Search (free tier) → activation_required', sa.status === 403 && sa.data.error === 'activation_required',
+      `${sa.data.error || sa.status}`);
+  }
+
+  // /api/me with is_admin
+  if (token) {
+    const me = await fetchJSON(F0 + '/api/me', {
+      headers: { 'Authorization': 'Bearer ' + token },
+    });
+    addResult(sf, '/api/me returns is_admin flag', me.ok && 'is_admin' in me.data,
+      me.ok ? `email: ${me.data.email}, is_admin: ${me.data.is_admin}` : 'failed');
+  }
+
+  // ═══ DEATH2DATA SITE ═══
+  const ds = 'Death2Data (GitHub Pages)';
+
+  // Homepage is search
+  const hp = await fetchPage(D2D + '/');
+  addResult(ds, 'Homepage loads', hp.ok, hp.ok ? `${hp.html.length} bytes` : `HTTP ${hp.status}`);
+  addResult(ds, 'Homepage is search page', hp.html.includes('search anything') || hp.html.includes('SEARCH'),
+    hp.html.includes('search anything') ? 'search input found' : 'might still be old version');
+  addResult(ds, 'No manifesto on homepage', !hp.html.includes('SECTION 1 OF 7'),
+    hp.html.includes('SECTION 1 OF 7') ? 'OLD VERSION — manifesto still showing' : 'clean');
+
+  // About page
+  const ab = await fetchPage(D2D + '/about.html');
+  addResult(ds, 'About page loads', ab.ok, ab.ok ? `${ab.html.length} bytes` : `HTTP ${ab.status}`);
+
+  // Welcome page
+  const wl = await fetchPage(D2D + '/welcome.html');
+  addResult(ds, 'Welcome page loads', wl.ok, wl.ok ? `${wl.html.length} bytes` : `HTTP ${wl.status}`);
+  addResult(ds, 'Welcome has START SEARCHING link', wl.html.includes('START SEARCHING'),
+    wl.html.includes('START SEARCHING') ? 'link found' : 'missing');
+
+  // ═══ PRIVACY CHECK ═══
+  const pc = 'Privacy / Leak Check';
+  addResult(pc, 'No lolztex in fortune0', !qr.html.includes('lolztex') && !dl.html.includes('lolztex'), 'checked QR + landing pages');
+  addResult(pc, 'No @test.com in D2D', !hp.html.includes('@test.com'), 'checked homepage');
+
+  // ═══ SUMMARY ═══
+  const passed = results.filter(r => r.pass === true).length;
+  const failed = results.filter(r => r.pass === false).length;
+  const total = results.length;
+
+  const sumEl = document.getElementById('summary');
+  sumEl.className = 'summary ' + (failed === 0 ? 'all-pass' : 'has-fail');
+  sumEl.innerHTML = `<strong style="color:${failed ? '#f00' : '#0f0'}">${passed}/${total} passed</strong>${failed ? ` · <span style="color:#f00">${failed} failed</span>` : ' · all clear'}`;
+
+  document.getElementById('run').disabled = false;
+  document.getElementById('run').textContent = 'RUN AGAIN';
+}
+</script>
+</body>
+</html>
